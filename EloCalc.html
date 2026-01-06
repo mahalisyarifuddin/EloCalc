@@ -238,7 +238,9 @@
 				<div class="row" style="gap:.5rem">
 					<button id="add" class="secondary" style="flex:1"></button>
 					<button id="clear" class="secondary" style="flex:1"></button>
+					<button id="import" class="secondary" style="flex:1"></button>
 				</div>
+				<input type="file" id="file" accept=".csv,.tsv,.txt" class="hidden">
 				<span id="error" class="error hidden" aria-live="polite"></span>
 				<button id="calculate" class="primary"></button>
 			</div>
@@ -265,6 +267,7 @@
 					calculate: 'Calculate Ratings',
 					edit: 'Edit Inputs',
 					export: 'Export to CSV',
+					import: 'Import CSV',
 					clear: 'Clear All',
 					clearConfirm: 'Are you sure you want to clear all competitors?',
 					removeCompetitor: 'Remove Competitor',
@@ -280,7 +283,10 @@
 					eloRating: 'Elo Rating',
 					eloDifference: 'Elo Diff',
 					resultsTitle: 'Calculated Elo Ratings',
-					infoText: 'The 400-point rule: A 400-point difference equals ~91% expected win rate. Ties count as 0.5 wins. All ratings are normalized to average 1000.'
+					infoText: 'The 400-point rule: A 400-point difference equals ~91% expected win rate. Ties count as 0.5 wins. All ratings are normalized to average 1000.',
+					alertImport: 'Error importing file. Please ensure it is a valid CSV/TSV with "Name", "Win", and optional "Tie" columns.',
+					languageLabel: 'Language',
+					themeLabel: 'Theme'
 				},
 				id: {
 					title: 'EloCalc',
@@ -295,6 +301,7 @@
 					calculate: 'Hitung Peringkat',
 					edit: 'Ubah Input',
 					export: 'Ekspor ke CSV',
+					import: 'Impor CSV',
 					clear: 'Hapus Semua',
 					clearConfirm: 'Apakah Anda yakin ingin menghapus semua kompetitor?',
 					removeCompetitor: 'Hapus Kompetitor',
@@ -310,7 +317,10 @@
 					eloRating: 'Peringkat Elo',
 					eloDifference: 'Selisih Elo',
 					resultsTitle: 'Peringkat Elo Terhitung',
-					infoText: 'Aturan 400 poin: Selisih 400 poin setara dengan ~91% tingkat menang yang diharapkan. Seri dihitung sebagai 0.5 kemenangan. Semua peringkat dinormalisasi ke rata-rata 1000.'
+					infoText: 'Aturan 400 poin: Selisih 400 poin setara dengan ~91% tingkat menang yang diharapkan. Seri dihitung sebagai 0.5 kemenangan. Semua peringkat dinormalisasi ke rata-rata 1000.',
+					alertImport: 'Gagal mengimpor file. Pastikan format CSV/TSV valid dengan kolom "Nama", "Menang", dan opsional "Seri".',
+					languageLabel: 'Bahasa',
+					themeLabel: 'Tema'
 				}
 			};
 			const elements = new Proxy({}, { get: (_, id) => document.getElementById(id) });
@@ -318,11 +328,16 @@
 
 			class EloCalc {
 				constructor() {
-					this.competitors = [
-						{ id: 1, name: 'Player B', winRate: 65, tieRate: 10 },
-						{ id: 2, name: 'Player C', winRate: 45, tieRate: 15 },
-						{ id: 3, name: 'Player D', winRate: 30, tieRate: 20 }
-					];
+					this.competitors = Object.entries({
+						'Player B': [65, 10],
+						'Player C': [45, 15],
+						'Player D': [30, 20]
+					}).map(([name, [winRate, tieRate]], i) => ({
+						id: i + 1,
+						name,
+						winRate,
+						tieRate
+					}));
 					this.nextIndex = 4;
 					this.data = null;
 					this.allowTies = true;
@@ -336,17 +351,17 @@
 						clear: () => this.clear(),
 						calculate: () => this.calculate(),
 						edit: () => this.display('input'),
-						export: () => this.export()
+						export: () => this.export(),
+						import: () => elements.file.click()
 					};
 					Object.entries(handlers).forEach(([id, handler]) => elements[id].onclick = handler);
+					elements.file.onchange = event => this.load(event.target.files[0]);
 					elements.input.oninput = () => this.error();
 					elements.language.onchange = event => this.lang(event.target.value);
 					elements.theme.onchange = event => this.theme(event.target.value);
-					elements.allowTies.onchange = event => {
-						this.allowTies = event.target.checked;
-						this.renderCompetitors();
-					};
+					elements.allowTies.onchange = event => (this.allowTies = event.target.checked, this.renderCompetitors());
 					elements.allowTies.checked = this.allowTies;
+					document.onkeydown = event => this.key(event);
 					elements.list.onclick = event => {
 						const row = event.target.closest('.competitor-row');
 						event.target.matches('.danger') && row && this.remove(+row.dataset.id);
@@ -354,18 +369,21 @@
 					elements.list.onchange = event => {
 						const row = event.target.closest('.competitor-row');
 						const comp = row && this.competitors.find(c => c.id === +row.dataset.id);
-						if (comp) {
-							if (event.target.classList.contains('name-input')) {
-								comp.name = event.target.value;
-							} else if (event.target.classList.contains('win-input')) {
-								comp.winRate = Math.max(0, Math.min(100, parseFloat(event.target.value) || 0));
-								event.target.value = comp.winRate;
-							} else if (event.target.classList.contains('tie-input')) {
-								comp.tieRate = Math.max(0, Math.min(100, parseFloat(event.target.value) || 0));
-								event.target.value = comp.tieRate;
-							}
-						}
+						comp && (
+							event.target.classList.contains('name-input') ? comp.name = event.target.value :
+							event.target.classList.contains('win-input') ? (comp.winRate = Math.max(0, Math.min(100, parseFloat(event.target.value) || 0)), event.target.value = comp.winRate) :
+							event.target.classList.contains('tie-input') ? (comp.tieRate = Math.max(0, Math.min(100, parseFloat(event.target.value) || 0)), event.target.value = comp.tieRate) :
+							null
+						);
 					};
+				}
+				key(event) {
+					((event.ctrlKey || event.metaKey) && event.key === 'Enter') && this.calculate();
+					const row = event.target.closest('.competitor-row');
+					(!event.ctrlKey && !event.metaKey && event.key === 'Enter' && row && event.target.matches('input')) && (event.preventDefault(),
+						event.target.type === 'text' ? event.target.nextElementSibling?.focus() :
+						event.target.classList.contains('win-input') && this.allowTies ? event.target.nextElementSibling?.focus() :
+						row.nextElementSibling ? row.nextElementSibling.querySelector('input')?.focus() : this.add());
 				}
 				string(key) {
 					return text[this.language]?.[key] ?? key;
@@ -387,12 +405,7 @@
 				}
 				display(section) {
 					['input', 'results'].forEach(id => elements[id].classList.toggle('hidden', id !== section));
-					if (section === 'results') {
-						elements.results.setAttribute('tabindex', '-1');
-						elements.results.focus();
-					} else {
-						elements.mainName.focus();
-					}
+					section === 'results' ? (elements.results.setAttribute('tabindex', '-1'), elements.results.focus()) : elements.mainName.focus();
 				}
 				error(message) {
 					elements.error.textContent = message || '';
@@ -425,124 +438,84 @@
 						</div>`
 					).join('');
 				}
+				load(file) {
+					const reader = new FileReader();
+					reader.onload = event => {
+						try {
+							const lines = event.target.result.split(/\r?\n/).filter(line => line.trim());
+							!lines.length && (() => { throw 0; })();
+							const separator = lines[0].split('\t').length > lines[0].split(',').length ? '\t' : ',';
+							const parse = line => line.split(new RegExp(`\\${separator}(?=(?:(?:[^"]*"){2})*[^"]*$)`)).map(cell => cell.trim().replace(/^"|"$/g, '').replace(/""/g, '"'));
+							const header = parse(lines[0]);
+							const find = regex => header.findIndex(cell => regex.test(cell));
+							let nameIndex = find(/name|nama/i), winIndex = find(/win|menang/i), tieIndex = find(/tie|seri/i);
+							(nameIndex < 0 || winIndex < 0) && (
+								(nameIndex = 0, winIndex = 1),
+								header.every(cell => /^\d+$/.test(cell.replace(/[.,]/g, '').trim())) && (winIndex = header.findIndex(cell => /^\d+$/.test(cell.replace(/[.,]/g, '').trim())), nameIndex = 1 - winIndex)
+							);
+							(nameIndex < 0 || winIndex < 0) && (() => { throw 0; })();
+							const competitors = lines.slice(1).map(line => {
+								const cells = parse(line);
+								return cells[nameIndex] ? {
+									id: this.nextIndex++,
+									name: cells[nameIndex],
+									winRate: +((cells[winIndex] || '').replace(/[^\d.]/g, '')) || 0,
+									tieRate: tieIndex >= 0 ? (+((cells[tieIndex] || '').replace(/[^\d.]/g, '')) || 0) : 0
+								} : null;
+							}).filter(Boolean);
+							!competitors.length && (() => { throw 0; })();
+							this.competitors = competitors;
+							tieIndex >= 0 && (this.allowTies = true, elements.allowTies.checked = true);
+							this.error();
+							this.renderCompetitors();
+							elements.file.value = '';
+						} catch {
+							this.error(this.string('alertImport'));
+						}
+					};
+					file && reader.readAsText(file);
+				}
 				calculate() {
 					this.error();
 					const mainName = elements.mainName.value.trim() || 'Main';
-					
-					if (this.competitors.length === 0) {
-						return this.error(this.string('alertCompetitors'));
-					}
-					
-					const valid = this.competitors.filter(c => c.name.trim() || c.winRate > 0 || c.tieRate > 0);
-					
-					for (const comp of valid) {
-						const tieRate = this.allowTies ? comp.tieRate : 0;
-						if (comp.winRate < 0 || comp.winRate > 100 || tieRate < 0 || tieRate > 100 || comp.winRate + tieRate > 100) {
-							return this.error(this.string('alertInvalidRate'));
-						}
-					}
-					
-					// Calculate raw Elo ratings (main contender starts at 0)
-					const rawResults = valid.map(comp => {
-						const tieRate = this.allowTies ? comp.tieRate : 0;
-						const effectiveScore = (comp.winRate + tieRate * 0.5) / 100;
-						const eloDiff = effectiveScore >= 1 ? 400 : effectiveScore <= 0 ? -400 : -400 * Math.log10(1 / effectiveScore - 1);
-						
-						return {
-							name: comp.name.trim() || `Competitor ${comp.id}`,
-							winRate: comp.winRate,
-							tieRate: tieRate,
-							effectiveScore,
-							rawElo: eloDiff
-						};
-					});
-					
-					// Add main contender with 0 raw Elo
-					const allRaw = [
-						{
-							name: mainName,
-							winRate: 50,
-							tieRate: 0,
-							effectiveScore: 0.5,
-							rawElo: 0
-						},
-						...rawResults
-					];
-					
-					// Calculate average and normalize to 1000
-					const avgElo = allRaw.reduce((sum, r) => sum + r.rawElo, 0) / allRaw.length;
-					const adjustment = 1000 - avgElo;
-					
-					const results = allRaw.map(r => ({
-						...r,
-						eloRating: r.rawElo + adjustment,
-						eloDiff: r.rawElo
-					})).sort((a, b) => b.eloRating - a.eloRating);
-					
-					this.data = {
-						mainName,
-						results,
-						allowTies: this.allowTies
-					};
-					
-					this.renderResults();
-					this.display('results');
+					!this.competitors.length ? this.error(this.string('alertCompetitors')) : (() => {
+						const valid = this.competitors.filter(c => c.name.trim() || c.winRate > 0 || c.tieRate > 0);
+						valid.some(comp => {
+							const tieRate = this.allowTies ? comp.tieRate : 0;
+							return comp.winRate < 0 || comp.winRate > 100 || tieRate < 0 || tieRate > 100 || comp.winRate + tieRate > 100;
+						}) ? this.error(this.string('alertInvalidRate')) : (() => {
+							const rawResults = valid.map(comp => {
+								const tieRate = this.allowTies ? comp.tieRate : 0;
+								const effectiveScore = (comp.winRate + tieRate * 0.5) / 100;
+								const eloDiff = effectiveScore >= 1 ? 400 : effectiveScore <= 0 ? -400 : -400 * Math.log10(1 / effectiveScore - 1);
+								return { name: comp.name.trim() || `Competitor ${comp.id}`, winRate: comp.winRate, tieRate, effectiveScore, rawElo: eloDiff };
+							});
+							const allRaw = [{ name: mainName, winRate: 50, tieRate: 0, effectiveScore: 0.5, rawElo: 0 }, ...rawResults];
+							const avgElo = allRaw.reduce((sum, r) => sum + r.rawElo, 0) / allRaw.length;
+							const adjustment = 1000 - avgElo;
+							this.data = {
+								mainName,
+								results: allRaw.map(r => ({ ...r, eloRating: r.rawElo + adjustment, eloDiff: r.rawElo })).sort((a, b) => b.eloRating - a.eloRating),
+								allowTies: this.allowTies
+							};
+							this.renderResults();
+							this.display('results');
+						})();
+					})();
 				}
 				renderResults() {
-					if (!this.data) return;
-					
-					const { results } = this.data;
-					
-					elements.resultsTable.innerHTML = `
-						<h2>${this.string('resultsTitle')}</h2>
-						<p class="info">${this.string('infoText')}</p>
-						<table>
-							<thead>
-								<tr>
-									<th>${this.string('name')}</th>
-									<th>${this.string('winRate')}</th>
-									<th>${this.string('tieRate')}</th>
-									<th>${this.string('effectiveScore')}</th>
-									<th>${this.string('eloRating')}</th>
-									<th>${this.string('eloDifference')}</th>
-								</tr>
-							</thead>
-							<tbody>
-								${results.map(result => `
-									<tr>
-										<td><strong>${escape(result.name)}</strong></td>
-										<td>${this.format(result.winRate, { maximumFractionDigits: 1 })}%</td>
-										<td>${this.format(result.tieRate, { maximumFractionDigits: 1 })}%</td>
-										<td>${this.format(result.effectiveScore * 100, { maximumFractionDigits: 1 })}%</td>
-										<td><strong>${Math.round(result.eloRating)}</strong></td>
-										<td>${result.eloDiff > 0 ? '+' : ''}${Math.round(result.eloDiff)}</td>
-									</tr>
-								`).join('')}
-							</tbody>
-						</table>
-					`;
+					this.data && (() => {
+						const { results } = this.data;
+						elements.resultsTable.innerHTML = `<h2>${this.string('resultsTitle')}</h2><p class="info">${this.string('infoText')}</p><table><thead><tr><th>${this.string('name')}</th><th>${this.string('winRate')}</th><th>${this.string('tieRate')}</th><th>${this.string('effectiveScore')}</th><th>${this.string('eloRating')}</th><th>${this.string('eloDifference')}</th></tr></thead><tbody>${results.map(result => `<tr><td><strong>${escape(result.name)}</strong></td><td>${this.format(result.winRate, { maximumFractionDigits: 1 })}%</td><td>${this.format(result.tieRate, { maximumFractionDigits: 1 })}%</td><td>${this.format(result.effectiveScore * 100, { maximumFractionDigits: 1 })}%</td><td><strong>${Math.round(result.eloRating)}</strong></td><td>${result.eloDiff > 0 ? '+' : ''}${Math.round(result.eloDiff)}</td></tr>`).join('')}</tbody></table>`;
+					})();
 				}
 				export() {
-					if (!this.data) return;
-					
-					const { results } = this.data;
-					const headers = [
-						this.string('name'),
-						this.string('winRate'),
-						this.string('tieRate'),
-						this.string('effectiveScore'),
-						this.string('eloRating'),
-						this.string('eloDifference')
-					].join(',');
-					
-					const csv = headers + '\n' + results.map(result => 
-						`"${result.name.replace(/"/g, '""')}",${result.winRate},${result.tieRate},${this.format(result.effectiveScore * 100, { minimumFractionDigits: 1, maximumFractionDigits: 1 })},${Math.round(result.eloRating)},${Math.round(result.eloDiff)}`
-					).join('\n');
-					
-					Object.assign(document.createElement('a'), {
-						href: URL.createObjectURL(new Blob([csv], { type: 'text/csv' })),
-						download: `elo_ratings_${new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-')}.csv`
-					}).click();
+					this.data && (() => {
+						const { results } = this.data;
+						const headers = [this.string('name'), this.string('winRate'), this.string('tieRate'), this.string('effectiveScore'), this.string('eloRating'), this.string('eloDifference')].join(',');
+						const csv = headers + '\n' + results.map(result => `"${result.name.replace(/"/g, '""')}",${result.winRate},${result.tieRate},${this.format(result.effectiveScore * 100, { minimumFractionDigits: 1, maximumFractionDigits: 1 })},${Math.round(result.eloRating)},${Math.round(result.eloDiff)}`).join('\n');
+						Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv], { type: 'text/csv' })), download: `elo_ratings_${new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-')}.csv` }).click();
+					})();
 				}
 			}
 			new EloCalc();
