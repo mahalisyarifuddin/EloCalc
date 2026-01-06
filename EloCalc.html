@@ -234,6 +234,12 @@
 					<label for="allowTies" id="allowTiesLabel" style="margin:0"></label>
 				</div>
 				<h3 id="competitorsHeader" style="margin-top:1.5rem"></h3>
+				<div id="listHeaders" class="competitor-row" style="margin-bottom:.25rem">
+					<label id="headName" style="flex:2;font-size:.85rem;opacity:.8"></label>
+					<label id="headWin" style="flex:1;font-size:.85rem;opacity:.8"></label>
+					<label id="headTie" style="flex:1;font-size:.85rem;opacity:.8"></label>
+					<button style="visibility:hidden;cursor:default" aria-hidden="true">×</button>
+				</div>
 				<div id="list" style="margin-bottom:1rem"></div>
 				<div class="row" style="gap:.5rem">
 					<button id="add" class="secondary" style="flex:1"></button>
@@ -398,6 +404,9 @@
 				lang(language) {
 					this.language = elements.language.value = document.documentElement.lang = language;
 					Object.keys(text.en).forEach(key => elements[key] && (elements[key].textContent = this.string(key)));
+					elements.headName.textContent = this.string('name');
+					elements.headWin.textContent = this.string('winRatePlaceholder');
+					elements.headTie.textContent = this.string('tieRatePlaceholder');
 					[...elements.theme.options].forEach(option => option.textContent = this.string(option.value + 'Theme'));
 					[['language', 'languageLabel'], ['theme', 'themeLabel']].forEach(([id, key]) => elements[id].setAttribute('aria-label', this.string(key)));
 					this.renderCompetitors();
@@ -429,6 +438,7 @@
 					target >= 0 ? elements.list.children[target]?.querySelector('.danger')?.focus() : elements.add.focus();
 				}
 				renderCompetitors() {
+					elements.headTie.classList.toggle('hidden', !this.allowTies);
 					elements.list.innerHTML = this.competitors.map((comp, i) => 
 						`<div class="competitor-row" data-id="${comp.id}">
 							<input type="text" class="name-input" value="${escape(comp.name)}" placeholder="${this.string('competitorPlaceholder')}" aria-label="${this.string('competitorPlaceholder')} ${i + 1}">
