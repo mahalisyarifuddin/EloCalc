@@ -197,6 +197,9 @@
 				gap: 1rem;
 				margin-top: 1rem;
 			}
+			#calculate {
+				margin-top: 1rem;
+			}
 			@media(max-width: 768px) {
 				.selectors {
 					position: static;
@@ -497,13 +500,14 @@
 				calculate() {
 					this.error();
 					const mainName = elements.mainName.value.trim() || 'Main';
+					this.competitors = this.competitors.filter(c => c.name.trim() || c.winRate > 0 || c.tieRate > 0);
+					this.renderCompetitors();
 					!this.competitors.length ? this.error(this.string('alertCompetitors')) : (() => {
-						const valid = this.competitors.filter(c => c.name.trim() || c.winRate > 0 || c.tieRate > 0);
-						valid.some(comp => {
+						this.competitors.some(comp => {
 							const tieRate = this.allowTies ? +comp.tieRate : 0;
 							return +comp.winRate < 0 || +comp.winRate > 100 || tieRate < 0 || tieRate > 100 || +comp.winRate + tieRate > 100;
 						}) ? this.error(this.string('alertInvalidRate')) : (() => {
-							const rawResults = valid.map(comp => {
+							const rawResults = this.competitors.map(comp => {
 								const tieRate = this.allowTies ? +comp.tieRate : 0;
 								const effectiveScore = (+comp.winRate + tieRate * 0.5) / 100;
 								const eloDiff = effectiveScore >= 1 ? 400 : effectiveScore <= 0 ? -400 : -400 * Math.log10(1 / effectiveScore - 1);
