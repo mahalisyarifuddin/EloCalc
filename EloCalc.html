@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width,initial-scale=1">
+		<title>EloCalc</title>
+		<style>
+			:root {
+				--primary: #005dac;
+				--on-primary: #ffffff;
+				--hover: #00539a;
+				--background: #f9f9ff;
+				--surface: #ffffff;
+				--text: #181c21;
+				--border: #c1c6d4;
+				--muted: #f2f3fc;
+				--success: #0b6b1d;
+				--on-success: #ffffff;
+				--danger: #ba1a1a;
+				--on-danger: #ffffff;
+				--highlight-bg: #d4e3ff;
+			}
+			@media (prefers-color-scheme: dark) {
+				:root:not(.light) {
+					--primary: #a5c8ff;
+					--on-primary: #00315f;
+					--hover: #72adff;
+					--background: #101319;
+					--surface: #0b0e14;
+					--text: #e0e2ea;
+					--border: #414752;
+					--muted: #181c21;
+					--success: #82db7e;
+					--on-success: #00390a;
+					--danger: #ffb4ab;
+					--on-danger: #93000a;
+					--highlight-bg: #001c3a;
+				}
+			}
+			:root.dark {
+				--primary: #a5c8ff;
+				--on-primary: #00315f;
+				--hover: #72adff;
+				--background: #101319;
+				--surface: #0b0e14;
+				--text: #e0e2ea;
+				--border: #414752;
+				--muted: #181c21;
+				--success: #82db7e;
+				--on-success: #00390a;
+				--danger: #ffb4ab;
+				--on-danger: #93000a;
+				--highlight-bg: #001c3a;
+			}
+			* {
+				box-sizing: border-box;
+				margin: 0;
+				padding: 0;
+				outline-offset: 2px;
+			}
+			*:focus-visible {
+				outline: 2px solid var(--primary);
+			}
+			body {
+				background: var(--background);
+				color: var(--text);
+				font-family: sans-serif;
+				display: flex;
+				justify-content: center;
+				min-height: 100vh;
+				padding: 1rem;
+			}
+			.container {
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: 8px;
+				max-width: 960px;
+				padding: 2rem;
+				width: 100%;
+				position: relative;
+				margin: 2rem 0;
+			}
+			.hidden {
+				display: none !important;
+			}
+			h1, h2, h3, label {
+				margin: .5rem 0;
+			}
+			label {
+				display: block;
+				font-weight: 700;
+			}
+			input, select, button {
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: 4px;
+				color: var(--text);
+				font-size: 1rem;
+				padding: .5rem;
+				width: 100%;
+			}
+			button {
+				cursor: pointer;
+			}
+			button:disabled {
+				opacity: .6;
+				cursor: not-allowed;
+			}
+			.primary {
+				background: var(--primary);
+				color: var(--on-primary);
+				border: 0;
+			}
+			.primary:hover:not(:disabled) {
+				background: var(--hover);
+			}
+			.secondary:hover:not(:disabled) {
+				background: var(--muted);
+			}
+			.danger, .success {
+				color: var(--on-danger);
+				border: 0;
+				background: var(--danger);
+			}
+			.success {
+				background: var(--success);
+				color: var(--on-success);
+			}
+			.danger:hover, .success:hover {
+				filter: brightness(.9);
+			}
+			.selectors {
+				position: absolute;
+				right: 2rem;
+				top: 1rem;
+				display: flex;
+				gap: 8px;
+			}
+			.selectors select {
+				width: auto;
+				font-size: .9rem;
+			}
+			.row {
+				display: flex;
+				gap: 1rem;
+				margin-bottom: 1rem;
+			}
+			.group {
+				flex: 1;
+			}
+			.competitor-row {
+				display: flex;
+				gap: .5rem;
+				align-items: center;
+				margin-bottom: .5rem;
+			}
+			.competitor-row input[type=text] {
+				flex: 2;
+			}
+			.competitor-row input[type=number] {
+				flex: 1;
+			}
+			.competitor-row button {
+				width: auto;
+				padding: .5rem 1rem;
+			}
+			table {
+				border-collapse: collapse;
+				margin-top: 1rem;
+				width: 100%;
+				font-size: .9rem;
+			}
+			th, td {
+				border: 1px solid var(--border);
+				padding: .5rem;
+				text-align: left;
+			}
+			th {
+				background: var(--primary);
+				color: var(--on-primary);
+			}
+			.error {
+				color: var(--danger);
+				font-size: .9rem;
+				margin-top: 1rem;
+				display: block;
+				font-weight: 500;
+			}
+			.info {
+				font-size: .9rem;
+				opacity: .8;
+				line-height: 1.6;
+				margin-bottom: 1rem;
+			}
+			.actions {
+				display: flex;
+				gap: 1rem;
+				margin-top: 1rem;
+			}
+			@media(max-width: 768px) {
+				.selectors {
+					position: static;
+					justify-content: end;
+					margin-bottom: .5rem;
+				}
+				.row {
+					flex-direction: column;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<div class="container">
+			<div class="selectors">
+				<select id="language">
+					<option value="en">English</option>
+					<option value="id">Bahasa Indonesia</option>
+				</select>
+				<select id="theme">
+					<option value="auto"></option>
+					<option value="light"></option>
+					<option value="dark"></option>
+				</select>
+			</div>
+			<h1 id="title"></h1>
+			<p id="subtitle" class="info"></p>
+			<div id="input">
+				<div class="group">
+					<label id="mainLabel" for="mainName"></label>
+					<input type="text" id="mainName" value="Player A">
+				</div>
+				<div class="row" style="align-items:center">
+					<input type="checkbox" id="allowTies" style="width:auto">
+					<label for="allowTies" id="allowTiesLabel" style="margin:0"></label>
+				</div>
+				<h3 id="competitorsHeader" style="margin-top:1.5rem"></h3>
+				<div id="list" style="margin-bottom:1rem"></div>
+				<div class="row" style="gap:.5rem">
+					<button id="add" class="secondary" style="flex:1"></button>
+					<button id="clear" class="secondary" style="flex:1"></button>
+				</div>
+				<span id="error" class="error hidden" aria-live="polite"></span>
+				<button id="calculate" class="primary"></button>
+			</div>
+			<div id="results" class="hidden">
+				<div class="actions">
+					<button id="edit" class="secondary" style="flex:1"></button>
+					<button id="export" class="success" style="flex:1"></button>
+				</div>
+				<div id="resultsTable"></div>
+			</div>
+		</div>
+		<script>
+			const text = {
+				en: {
+					title: 'EloCalc',
+					subtitle: 'Convert win rates to Elo ratings (normalized to average 1000)',
+					autoTheme: 'Auto Theme',
+					lightTheme: 'Light',
+					darkTheme: 'Dark',
+					mainLabel: 'Main Contender Name',
+					allowTiesLabel: 'Include Tie Rates',
+					competitorsHeader: 'Competitors',
+					add: '+ Add Competitor',
+					calculate: 'Calculate Ratings',
+					edit: 'Edit Inputs',
+					export: 'Export to CSV',
+					clear: 'Clear All',
+					clearConfirm: 'Are you sure you want to clear all competitors?',
+					removeCompetitor: 'Remove Competitor',
+					competitorPlaceholder: 'Competitor Name',
+					winRatePlaceholder: 'Win %',
+					tieRatePlaceholder: 'Tie %',
+					alertCompetitors: 'Please add at least one competitor.',
+					alertInvalidRate: 'Win rate and tie rate must be between 0-100, and their sum cannot exceed 100.',
+					name: 'Name',
+					winRate: 'Win Rate',
+					tieRate: 'Tie Rate',
+					effectiveScore: 'Effective Score',
+					eloRating: 'Elo Rating',
+					eloDifference: 'Elo Diff',
+					resultsTitle: 'Calculated Elo Ratings',
+					infoText: 'The 400-point rule: A 400-point difference equals ~91% expected win rate. Ties count as 0.5 wins. All ratings are normalized to average 1000.'
+				},
+				id: {
+					title: 'EloCalc',
+					subtitle: 'Konversi tingkat kemenangan ke peringkat Elo (dinormalisasi ke rata-rata 1000)',
+					autoTheme: 'Tema Otomatis',
+					lightTheme: 'Terang',
+					darkTheme: 'Gelap',
+					mainLabel: 'Nama Pesaing Utama',
+					allowTiesLabel: 'Sertakan Tingkat Seri',
+					competitorsHeader: 'Kompetitor',
+					add: '+ Tambah Kompetitor',
+					calculate: 'Hitung Peringkat',
+					edit: 'Ubah Input',
+					export: 'Ekspor ke CSV',
+					clear: 'Hapus Semua',
+					clearConfirm: 'Apakah Anda yakin ingin menghapus semua kompetitor?',
+					removeCompetitor: 'Hapus Kompetitor',
+					competitorPlaceholder: 'Nama Kompetitor',
+					winRatePlaceholder: 'Menang %',
+					tieRatePlaceholder: 'Seri %',
+					alertCompetitors: 'Harap tambahkan setidaknya satu kompetitor.',
+					alertInvalidRate: 'Tingkat menang dan seri harus antara 0-100, dan jumlahnya tidak boleh melebihi 100.',
+					name: 'Nama',
+					winRate: 'Tingkat Menang',
+					tieRate: 'Tingkat Seri',
+					effectiveScore: 'Skor Efektif',
+					eloRating: 'Peringkat Elo',
+					eloDifference: 'Selisih Elo',
+					resultsTitle: 'Peringkat Elo Terhitung',
+					infoText: 'Aturan 400 poin: Selisih 400 poin setara dengan ~91% tingkat menang yang diharapkan. Seri dihitung sebagai 0.5 kemenangan. Semua peringkat dinormalisasi ke rata-rata 1000.'
+				}
+			};
+			const elements = new Proxy({}, { get: (_, id) => document.getElementById(id) });
+			const escape = string => string.replace(/[&<>"']/g, char => '&#' + char.charCodeAt(0) + ';');
+
+			class EloCalc {
+				constructor() {
+					this.competitors = [
+						{ id: 1, name: 'Player B', winRate: 65, tieRate: 10 },
+						{ id: 2, name: 'Player C', winRate: 45, tieRate: 15 },
+						{ id: 3, name: 'Player D', winRate: 30, tieRate: 20 }
+					];
+					this.nextIndex = 4;
+					this.data = null;
+					this.allowTies = true;
+					this.setup();
+					this.theme('auto');
+					this.lang(navigator.language?.startsWith('id') ? 'id' : 'en');
+				}
+				setup() {
+					const handlers = {
+						add: () => this.add(),
+						clear: () => this.clear(),
+						calculate: () => this.calculate(),
+						edit: () => this.display('input'),
+						export: () => this.export()
+					};
+					Object.entries(handlers).forEach(([id, handler]) => elements[id].onclick = handler);
+					elements.input.oninput = () => this.error();
+					elements.language.onchange = event => this.lang(event.target.value);
+					elements.theme.onchange = event => this.theme(event.target.value);
+					elements.allowTies.onchange = event => {
+						this.allowTies = event.target.checked;
+						this.renderCompetitors();
+					};
+					elements.allowTies.checked = this.allowTies;
+					elements.list.onclick = event => {
+						const row = event.target.closest('.competitor-row');
+						event.target.matches('.danger') && row && this.remove(+row.dataset.id);
+					};
+					elements.list.onchange = event => {
+						const row = event.target.closest('.competitor-row');
+						const comp = row && this.competitors.find(c => c.id === +row.dataset.id);
+						if (comp) {
+							if (event.target.classList.contains('name-input')) {
+								comp.name = event.target.value;
+							} else if (event.target.classList.contains('win-input')) {
+								comp.winRate = Math.max(0, Math.min(100, parseFloat(event.target.value) || 0));
+								event.target.value = comp.winRate;
+							} else if (event.target.classList.contains('tie-input')) {
+								comp.tieRate = Math.max(0, Math.min(100, parseFloat(event.target.value) || 0));
+								event.target.value = comp.tieRate;
+							}
+						}
+					};
+				}
+				string(key) {
+					return text[this.language]?.[key] ?? key;
+				}
+				format(value, options = {}) {
+					return value.toLocaleString(this.language === 'id' ? 'id-ID' : 'en-US', options);
+				}
+				theme(themeName) {
+					document.documentElement.className = themeName === 'auto' ? '' : themeName;
+					elements.theme.value = themeName;
+				}
+				lang(language) {
+					this.language = elements.language.value = document.documentElement.lang = language;
+					Object.keys(text.en).forEach(key => elements[key] && (elements[key].textContent = this.string(key)));
+					[...elements.theme.options].forEach(option => option.textContent = this.string(option.value + 'Theme'));
+					[['language', 'languageLabel'], ['theme', 'themeLabel']].forEach(([id, key]) => elements[id].setAttribute('aria-label', this.string(key)));
+					this.renderCompetitors();
+					!elements.results.classList.contains('hidden') && this.data && this.renderResults();
+				}
+				display(section) {
+					['input', 'results'].forEach(id => elements[id].classList.toggle('hidden', id !== section));
+					if (section === 'results') {
+						elements.results.setAttribute('tabindex', '-1');
+						elements.results.focus();
+					} else {
+						elements.mainName.focus();
+					}
+				}
+				error(message) {
+					elements.error.textContent = message || '';
+					elements.error.classList.toggle('hidden', !message);
+				}
+				add() {
+					this.error();
+					this.competitors.push({ id: this.nextIndex++, name: '', winRate: 50, tieRate: 0 });
+					this.renderCompetitors();
+					elements.list.lastElementChild?.querySelector('input')?.focus();
+				}
+				clear() {
+					confirm(this.string('clearConfirm')) && (this.competitors = [], this.renderCompetitors(), this.add(), this.error());
+				}
+				remove(id) {
+					this.error();
+					const index = this.competitors.findIndex(c => c.id === id);
+					this.competitors = this.competitors.filter(c => c.id !== id);
+					this.renderCompetitors();
+					const target = Math.min(index, this.competitors.length - 1);
+					target >= 0 ? elements.list.children[target]?.querySelector('.danger')?.focus() : elements.add.focus();
+				}
+				renderCompetitors() {
+					elements.list.innerHTML = this.competitors.map((comp, i) => 
+						`<div class="competitor-row" data-id="${comp.id}">
+							<input type="text" class="name-input" value="${escape(comp.name)}" placeholder="${this.string('competitorPlaceholder')}" aria-label="${this.string('competitorPlaceholder')} ${i + 1}">
+							<input type="number" class="win-input" value="${comp.winRate}" placeholder="${this.string('winRatePlaceholder')}" min="0" max="100" step="0.1" aria-label="${this.string('winRatePlaceholder')} ${i + 1}">
+							${this.allowTies ? `<input type="number" class="tie-input" value="${comp.tieRate}" placeholder="${this.string('tieRatePlaceholder')}" min="0" max="100" step="0.1" aria-label="${this.string('tieRatePlaceholder')} ${i + 1}">` : ''}
+							<button class="danger" aria-label="${this.string('removeCompetitor')} ${i + 1}">×</button>
+						</div>`
+					).join('');
+				}
+				calculate() {
+					this.error();
+					const mainName = elements.mainName.value.trim() || 'Main';
+					
+					if (this.competitors.length === 0) {
+						return this.error(this.string('alertCompetitors'));
+					}
+					
+					const valid = this.competitors.filter(c => c.name.trim() || c.winRate > 0 || c.tieRate > 0);
+					
+					for (const comp of valid) {
+						const tieRate = this.allowTies ? comp.tieRate : 0;
+						if (comp.winRate < 0 || comp.winRate > 100 || tieRate < 0 || tieRate > 100 || comp.winRate + tieRate > 100) {
+							return this.error(this.string('alertInvalidRate'));
+						}
+					}
+					
+					// Calculate raw Elo ratings (main contender starts at 0)
+					const rawResults = valid.map(comp => {
+						const tieRate = this.allowTies ? comp.tieRate : 0;
+						const effectiveScore = (comp.winRate + tieRate * 0.5) / 100;
+						const eloDiff = effectiveScore >= 1 ? 400 : effectiveScore <= 0 ? -400 : -400 * Math.log10(1 / effectiveScore - 1);
+						
+						return {
+							name: comp.name.trim() || `Competitor ${comp.id}`,
+							winRate: comp.winRate,
+							tieRate: tieRate,
+							effectiveScore,
+							rawElo: eloDiff
+						};
+					});
+					
+					// Add main contender with 0 raw Elo
+					const allRaw = [
+						{
+							name: mainName,
+							winRate: 50,
+							tieRate: 0,
+							effectiveScore: 0.5,
+							rawElo: 0
+						},
+						...rawResults
+					];
+					
+					// Calculate average and normalize to 1000
+					const avgElo = allRaw.reduce((sum, r) => sum + r.rawElo, 0) / allRaw.length;
+					const adjustment = 1000 - avgElo;
+					
+					const results = allRaw.map(r => ({
+						...r,
+						eloRating: r.rawElo + adjustment,
+						eloDiff: r.rawElo
+					})).sort((a, b) => b.eloRating - a.eloRating);
+					
+					this.data = {
+						mainName,
+						results,
+						allowTies: this.allowTies
+					};
+					
+					this.renderResults();
+					this.display('results');
+				}
+				renderResults() {
+					if (!this.data) return;
+					
+					const { results } = this.data;
+					
+					elements.resultsTable.innerHTML = `
+						<h2>${this.string('resultsTitle')}</h2>
+						<p class="info">${this.string('infoText')}</p>
+						<table>
+							<thead>
+								<tr>
+									<th>${this.string('name')}</th>
+									<th>${this.string('winRate')}</th>
+									<th>${this.string('tieRate')}</th>
+									<th>${this.string('effectiveScore')}</th>
+									<th>${this.string('eloRating')}</th>
+									<th>${this.string('eloDifference')}</th>
+								</tr>
+							</thead>
+							<tbody>
+								${results.map(result => `
+									<tr>
+										<td><strong>${escape(result.name)}</strong></td>
+										<td>${this.format(result.winRate, { maximumFractionDigits: 1 })}%</td>
+										<td>${this.format(result.tieRate, { maximumFractionDigits: 1 })}%</td>
+										<td>${this.format(result.effectiveScore * 100, { maximumFractionDigits: 1 })}%</td>
+										<td><strong>${Math.round(result.eloRating)}</strong></td>
+										<td>${result.eloDiff > 0 ? '+' : ''}${Math.round(result.eloDiff)}</td>
+									</tr>
+								`).join('')}
+							</tbody>
+						</table>
+					`;
+				}
+				export() {
+					if (!this.data) return;
+					
+					const { results } = this.data;
+					const headers = [
+						this.string('name'),
+						this.string('winRate'),
+						this.string('tieRate'),
+						this.string('effectiveScore'),
+						this.string('eloRating'),
+						this.string('eloDifference')
+					].join(',');
+					
+					const csv = headers + '\n' + results.map(result => 
+						`"${result.name.replace(/"/g, '""')}",${result.winRate},${result.tieRate},${this.format(result.effectiveScore * 100, { minimumFractionDigits: 1, maximumFractionDigits: 1 })},${Math.round(result.eloRating)},${Math.round(result.eloDiff)}`
+					).join('\n');
+					
+					Object.assign(document.createElement('a'), {
+						href: URL.createObjectURL(new Blob([csv], { type: 'text/csv' })),
+						download: `elo_ratings_${new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-')}.csv`
+					}).click();
+				}
+			}
+			new EloCalc();
+		</script>
+	</body>
+</html>
