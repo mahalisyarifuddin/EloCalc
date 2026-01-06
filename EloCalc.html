@@ -375,30 +375,45 @@
 					elements.list.onchange = event => {
 						const row = event.target.closest('.competitor-row');
 						const comp = row && this.competitors.find(c => c.id === +row.dataset.id);
-						comp && (
-							event.target.classList.contains('name-input') ? comp.name = event.target.value :
-							event.target.classList.contains('win-input') ? (comp.winRate = event.target.value === '' ? '' : Math.max(0, Math.min(100, parseFloat(event.target.value) || 0)), event.target.value = comp.winRate) :
-							event.target.classList.contains('tie-input') ? (comp.tieRate = event.target.value === '' ? '' : Math.max(0, Math.min(100, parseFloat(event.target.value) || 0)), event.target.value = comp.tieRate) :
-							null
-						);
+						comp && this.updateCompetitor(comp, event.target);
 					};
 				}
 				key(event) {
-					((event.ctrlKey || event.metaKey) && event.key === 'Enter') && this.calculate();
-					const row = event.target.closest('.competitor-row');
-					if (!event.ctrlKey && !event.metaKey && event.key === 'Enter' && row && event.target.matches('input')) {
+					const isEnter = event.key === 'Enter';
+					const isModifier = event.ctrlKey || event.metaKey;
+
+					(isModifier && isEnter) && this.calculate();
+
+					(!isModifier && isEnter && event.target.matches('input')) && (() => {
+						const row = event.target.closest('.competitor-row');
+						if (!row) return;
+
 						event.preventDefault();
 						const comp = this.competitors.find(c => c.id === +row.dataset.id);
-						comp && (
-							event.target.classList.contains('name-input') ? comp.name = event.target.value :
-							event.target.classList.contains('win-input') ? comp.winRate = event.target.value === '' ? '' : Math.max(0, Math.min(100, parseFloat(event.target.value) || 0)) :
-							event.target.classList.contains('tie-input') ? comp.tieRate = event.target.value === '' ? '' : Math.max(0, Math.min(100, parseFloat(event.target.value) || 0)) :
-							null
-						);
-						event.target.type === 'text' ? event.target.nextElementSibling?.focus() :
-						event.target.classList.contains('win-input') && this.allowTies ? event.target.nextElementSibling?.focus() :
-						row.nextElementSibling ? row.nextElementSibling.querySelector('input')?.focus() : this.add();
-					}
+						comp && this.updateCompetitor(comp, event.target);
+
+						this.focusNext(event.target, row);
+					})();
+				}
+
+				updateCompetitor(comp, target) {
+					const val = target.value;
+					target.classList.contains('name-input') ? comp.name = val :
+					target.classList.contains('win-input') ? this.updateRate(comp, 'winRate', val, target) :
+					target.classList.contains('tie-input') ? this.updateRate(comp, 'tieRate', val, target) :
+					null;
+				}
+
+				updateRate(comp, prop, value, target) {
+					const num = value === '' ? '' : Math.max(0, Math.min(100, parseFloat(value) || 0));
+					comp[prop] = num;
+					if (target) target.value = num;
+				}
+
+				focusNext(target, row) {
+					target.type === 'text' ? target.nextElementSibling?.focus() :
+					target.classList.contains('win-input') && this.allowTies ? target.nextElementSibling?.focus() :
+					row.nextElementSibling ? row.nextElementSibling.querySelector('input')?.focus() : this.add();
 				}
 				string(key) {
 					return text[this.language]?.[key] ?? key;
@@ -499,29 +514,56 @@
 					const mainName = elements.mainName.value.trim() || 'Main';
 					this.competitors = this.competitors.filter(c => c.name.trim() || c.winRate > 0 || c.tieRate > 0);
 					this.renderCompetitors();
-					!this.competitors.length ? this.error(this.string('alertCompetitors')) : (() => {
-						this.competitors.some(comp => {
-							const tieRate = this.allowTies ? +comp.tieRate : 0;
-							return +comp.winRate < 0 || +comp.winRate > 100 || tieRate < 0 || tieRate > 100 || +comp.winRate + tieRate > 100;
-						}) ? this.error(this.string('alertInvalidRate')) : (() => {
-							const rawResults = this.competitors.map(comp => {
-								const tieRate = this.allowTies ? +comp.tieRate : 0;
-								const effectiveScore = (+comp.winRate + tieRate * 0.5) / 100;
-								const eloDiff = effectiveScore >= 1 ? 400 : effectiveScore <= 0 ? -400 : -400 * Math.log10(1 / effectiveScore - 1);
-								return { name: comp.name.trim() || `Competitor ${comp.id}`, winRate: +comp.winRate, tieRate, effectiveScore, rawElo: eloDiff };
-							});
-							const allRaw = [{ name: mainName, winRate: 50, tieRate: 0, effectiveScore: 0.5, rawElo: 0 }, ...rawResults];
-							const avgElo = allRaw.reduce((sum, r) => sum + r.rawElo, 0) / allRaw.length;
-							const adjustment = 1000 - avgElo;
-							this.data = {
-								mainName,
-								results: allRaw.map(r => ({ ...r, eloRating: r.rawElo + adjustment, eloDiff: r.rawElo })).sort((a, b) => b.eloRating - a.eloRating),
-								allowTies: this.allowTies
-							};
-							this.renderResults();
-							this.display('results');
-						})();
-					})();
+
+					const error = !this.competitors.length ? 'alertCompetitors' :
+					              this.hasInvalidRates() ? 'alertInvalidRate' : null;
+
+					error ? this.error(this.string(error)) : this.performCalculation(mainName);
+				}
+
+				hasInvalidRates() {
+					return this.competitors.some(comp => {
+						const tieRate = this.allowTies ? +comp.tieRate : 0;
+						const winRate = +comp.winRate;
+						return winRate < 0 || winRate > 100 || tieRate < 0 || tieRate > 100 || winRate + tieRate > 100;
+					});
+				}
+
+				performCalculation(mainName) {
+					const rawResults = this.competitors.map(comp => this.calculateRow(comp));
+					const allRaw = [{ name: mainName, winRate: 50, tieRate: 0, effectiveScore: 0.5, rawElo: 0 }, ...rawResults];
+					const avgElo = allRaw.reduce((sum, r) => sum + r.rawElo, 0) / allRaw.length;
+					const adjustment = 1000 - avgElo;
+
+					this.data = {
+						mainName,
+						results: allRaw.map(r => ({
+							...r,
+							eloRating: r.rawElo + adjustment,
+							eloDiff: r.rawElo
+						})).sort((a, b) => b.eloRating - a.eloRating),
+						allowTies: this.allowTies
+					};
+
+					this.renderResults();
+					this.display('results');
+				}
+
+				calculateRow(comp) {
+					const tieRate = this.allowTies ? +comp.tieRate : 0;
+					const effectiveScore = (+comp.winRate + tieRate * 0.5) / 100;
+
+					const eloDiff = effectiveScore >= 1 ? 400 :
+					                effectiveScore <= 0 ? -400 :
+					                -400 * Math.log10(1 / effectiveScore - 1);
+
+					return {
+						name: comp.name.trim() || `Competitor ${comp.id}`,
+						winRate: +comp.winRate,
+						tieRate,
+						effectiveScore,
+						rawElo: eloDiff
+					};
 				}
 				renderResults() {
 					this.data && (() => {
