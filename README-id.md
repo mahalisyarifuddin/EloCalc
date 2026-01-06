@@ -20,7 +20,7 @@ Kalkulator mengambil penantang utama dan daftar lawan dengan tingkat kemenangan 
 1.  Unduh `EloCalc.html`.
 2.  Buka di peramban modern apa pun (Chrome, Edge, Firefox, Safari).
 3.  Masukkan nama Penantang Utama (mis., "Tim Saya").
-4.  Tambahkan kompetitor dan masukkan tingkat kemenangan Penantang Utama melawan mereka.
+4.  Tambahkan kompetitor dan masukkan tingkat kemenangan mereka melawan Penantang Utama.
 5.  Aktifkan "Sertakan Tingkat Seri" jika hasil imbang dimungkinkan.
 6.  Klik "Hitung Peringkat".
 7.  Lihat peringkat Elo yang dinormalisasi dan ekspor ke CSV jika diperlukan.

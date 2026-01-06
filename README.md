@@ -20,7 +20,7 @@ The calculator takes a main contender and a list of opponents with their respect
 1.  Download `EloCalc.html`.
 2.  Open it in any modern browser (Chrome, Edge, Firefox, Safari).
 3.  Enter the name of your Main Contender (e.g., "My Team").
-4.  Add competitors and input the Main Contender's win rate against them.
+4.  Add competitors and input their win rate against the Main Contender.
 5.  Enable "Include Tie Rates" if draws are possible.
 6.  Click "Calculate Ratings".
 7.  View the normalized Elo ratings and export to CSV if needed.
