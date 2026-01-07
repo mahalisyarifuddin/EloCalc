@@ -384,16 +384,19 @@
 
 					(isModifier && isEnter) && this.calculate();
 
-					(!isModifier && isEnter && event.target.matches('input')) && (() => {
-						const row = event.target.closest('.competitor-row');
-						if (!row) return;
-
-						event.preventDefault();
-						const comp = this.competitors.find(c => c.id === +row.dataset.id);
-						comp && this.updateCompetitor(comp, event.target);
-
-						this.focusNext(event.target, row);
-					})();
+					(!isModifier && isEnter) && (
+						(event.target.matches('input') && event.target.closest('.competitor-row')) ? (() => {
+							const row = event.target.closest('.competitor-row');
+							event.preventDefault();
+							const comp = this.competitors.find(c => c.id === +row.dataset.id);
+							comp && this.updateCompetitor(comp, event.target);
+							this.focusNext(event.target, row);
+						})() :
+						event.target.matches('#mainName, #allowTies') ? (() => {
+							event.preventDefault();
+							elements.list.firstElementChild?.querySelector('input')?.focus() ?? elements.add.focus();
+						})() : null
+					);
 				}
 
 				updateCompetitor(comp, target) {
