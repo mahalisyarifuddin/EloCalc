@@ -556,8 +556,8 @@
 					const tieRate = this.allowTies ? +comp.tieRate : 0;
 					const effectiveScore = (+comp.winRate + tieRate * 0.5) / 100;
 
-					const eloDiff = effectiveScore >= 1 ? 400 :
-					                effectiveScore <= 0 ? -400 :
+					const eloDiff = effectiveScore >= 1 ? 2000 :
+					                effectiveScore <= 0 ? -2000 :
 					                -400 * Math.log10(1 / effectiveScore - 1);
 
 					return {
