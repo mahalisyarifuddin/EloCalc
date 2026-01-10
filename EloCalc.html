@@ -332,6 +332,40 @@
 			const elements = new Proxy({}, { get: (_, id) => document.getElementById(id) });
 			const escape = string => string.replace(/[&<>"']/g, char => '&#' + char.charCodeAt(0) + ';');
 
+			const parseCSV = text => {
+				const firstLine = text.split('\n')[0];
+				const separator = (firstLine.match(/\t/g) || []).length > (firstLine.match(/,/g) || []).length ? '\t' : ',';
+				const rows = [];
+				let currentRow = [];
+				let currentCell = '';
+				let insideQuote = false;
+
+				for (let i = 0; i < text.length; i++) {
+					const char = text[i];
+					const nextChar = text[i + 1];
+
+					if (char === '"') insideQuote = !insideQuote;
+
+					if (char === separator && !insideQuote) {
+						currentRow.push(currentCell);
+						currentCell = '';
+					} else if ((char === '\n' || char === '\r') && !insideQuote) {
+						if (char === '\r' && nextChar === '\n') i++;
+						currentRow.push(currentCell);
+						if (currentRow.length > 1 || currentRow[0].trim()) rows.push(currentRow);
+						currentRow = [];
+						currentCell = '';
+					} else {
+						currentCell += char;
+					}
+				}
+				if (currentCell || currentRow.length) {
+					currentRow.push(currentCell);
+					if (currentRow.length > 1 || currentRow[0].trim()) rows.push(currentRow);
+				}
+				return rows.map(row => row.map(cell => cell.trim().replace(/^"|"$/g, '').replace(/""/g, '"')));
+			};
+
 			class EloCalc {
 				constructor() {
 					this.competitors = Object.entries({
@@ -481,11 +515,9 @@
 					const reader = new FileReader();
 					reader.onload = event => {
 						try {
-							const lines = event.target.result.split(/\r?\n/).filter(line => line.trim());
-							!lines.length && (() => { throw 0; })();
-							const separator = lines[0].split('\t').length > lines[0].split(',').length ? '\t' : ',';
-							const parse = line => line.split(new RegExp(`\\${separator}(?=(?:(?:[^"]*"){2})*[^"]*$)`)).map(cell => cell.trim().replace(/^"|"$/g, '').replace(/""/g, '"'));
-							const header = parse(lines[0]);
+							const rows = parseCSV(event.target.result);
+							!rows.length && (() => { throw 0; })();
+							const header = rows[0];
 							const find = regex => header.findIndex(cell => regex.test(cell));
 							let nameIndex = find(/name|nama/i), winIndex = find(/win|menang/i), tieIndex = find(/tie|seri/i);
 							(nameIndex < 0 || winIndex < 0) && (
@@ -493,8 +525,7 @@
 								header.every(cell => /^\d+$/.test(cell.replace(/[.,]/g, '').trim())) && (winIndex = header.findIndex(cell => /^\d+$/.test(cell.replace(/[.,]/g, '').trim())), nameIndex = 1 - winIndex)
 							);
 							(nameIndex < 0 || winIndex < 0) && (() => { throw 0; })();
-							const competitors = lines.slice(1).map(line => {
-								const cells = parse(line);
+							const competitors = rows.slice(1).map(cells => {
 								return cells[nameIndex] ? {
 									id: this.nextIndex++,
 									name: cells[nameIndex],
