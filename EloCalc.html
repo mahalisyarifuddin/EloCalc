@@ -379,32 +379,34 @@
 					};
 				}
 				key(event) {
-					const isEnter = event.key === 'Enter';
-					const isModifier = event.ctrlKey || event.metaKey;
+					if (event.key !== 'Enter') return;
 
-					(isModifier && isEnter) && this.calculate();
+					if (event.ctrlKey || event.metaKey) {
+						this.calculate();
+						return;
+					}
 
-					(!isModifier && isEnter) && (
-						(event.target.matches('input') && event.target.closest('.competitor-row')) ? (() => {
-							const row = event.target.closest('.competitor-row');
-							event.preventDefault();
-							const comp = this.competitors.find(c => c.id === +row.dataset.id);
-							comp && this.updateCompetitor(comp, event.target);
-							this.focusNext(event.target, row);
-						})() :
-						event.target.matches('#mainName, #allowTies') ? (() => {
-							event.preventDefault();
-							elements.list.firstElementChild?.querySelector('input')?.focus() ?? elements.add.focus();
-						})() : null
-					);
+					if (event.target.matches('input') && event.target.closest('.competitor-row')) {
+						event.preventDefault();
+						const row = event.target.closest('.competitor-row');
+						const comp = this.competitors.find(c => c.id === +row.dataset.id);
+						if (comp) this.updateCompetitor(comp, event.target);
+						this.focusNext(event.target, row);
+					} else if (event.target.matches('#mainName, #allowTies')) {
+						event.preventDefault();
+						elements.list.firstElementChild?.querySelector('input')?.focus() ?? elements.add.focus();
+					}
 				}
 
 				updateCompetitor(comp, target) {
 					const val = target.value;
-					target.classList.contains('name-input') ? comp.name = val :
-					target.classList.contains('win-input') ? this.updateRate(comp, 'winRate', val, target) :
-					target.classList.contains('tie-input') ? this.updateRate(comp, 'tieRate', val, target) :
-					null;
+					if (target.classList.contains('name-input')) {
+						comp.name = val;
+					} else if (target.classList.contains('win-input')) {
+						this.updateRate(comp, 'winRate', val, target);
+					} else if (target.classList.contains('tie-input')) {
+						this.updateRate(comp, 'tieRate', val, target);
+					}
 				}
 
 				updateRate(comp, prop, value, target) {
