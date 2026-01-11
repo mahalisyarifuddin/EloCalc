@@ -334,7 +334,15 @@
 
 			const parseCSV = text => {
 				const firstLine = text.split('\n')[0];
-				const separator = (firstLine.match(/\t/g) || []).length > (firstLine.match(/,/g) || []).length ? '\t' : ',';
+				let commas = 0, tabs = 0, inside = false;
+				for (const char of firstLine) {
+					if (char === '"') inside = !inside;
+					else if (!inside) {
+						if (char === ',') commas++;
+						else if (char === '\t') tabs++;
+					}
+				}
+				const separator = tabs >= commas && tabs > 0 ? '\t' : ',';
 				const rows = [];
 				let currentRow = [];
 				let currentCell = '';
