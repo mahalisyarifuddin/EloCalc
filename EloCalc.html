@@ -407,17 +407,22 @@
 					elements.input.oninput = () => this.error();
 					elements.language.onchange = event => this.lang(event.target.value);
 					elements.theme.onchange = event => this.theme(event.target.value);
-					elements.allowTies.onchange = event => (this.allowTies = event.target.checked, this.renderCompetitors());
+					elements.allowTies.onchange = event => {
+						this.allowTies = event.target.checked;
+						this.renderCompetitors();
+					};
 					elements.allowTies.checked = this.allowTies;
 					document.onkeydown = event => this.key(event);
 					elements.list.onclick = event => {
 						const row = event.target.closest('.competitor-row');
-						event.target.matches('.danger') && row && this.remove(+row.dataset.id);
+						if (event.target.matches('.danger') && row) {
+							this.remove(+row.dataset.id);
+						}
 					};
 					elements.list.onchange = event => {
 						const row = event.target.closest('.competitor-row');
 						const comp = row && this.competitors.find(c => c.id === +row.dataset.id);
-						comp && this.updateCompetitor(comp, event.target);
+						if (comp) this.updateCompetitor(comp, event.target);
 					};
 				}
 				key(event) {
@@ -436,7 +441,12 @@
 						this.focusNext(event.target, row);
 					} else if (event.target.matches('#mainName, #allowTies')) {
 						event.preventDefault();
-						elements.list.firstElementChild?.querySelector('input')?.focus() ?? elements.add.focus();
+						const firstInput = elements.list.firstElementChild?.querySelector('input');
+						if (firstInput) {
+							firstInput.focus();
+						} else {
+							elements.add.focus();
+						}
 					}
 				}
 
@@ -458,9 +468,15 @@
 				}
 
 				focusNext(target, row) {
-					target.type === 'text' ? target.nextElementSibling?.focus() :
-					target.classList.contains('win-input') && this.allowTies ? target.nextElementSibling?.focus() :
-					row.nextElementSibling ? row.nextElementSibling.querySelector('input')?.focus() : this.add();
+					if (target.type === 'text') {
+						target.nextElementSibling?.focus();
+					} else if (target.classList.contains('win-input') && this.allowTies) {
+						target.nextElementSibling?.focus();
+					} else if (row.nextElementSibling) {
+						row.nextElementSibling.querySelector('input')?.focus();
+					} else {
+						this.add();
+					}
 				}
 				string(key) {
 					return text[this.language]?.[key] ?? key;
@@ -474,18 +490,27 @@
 				}
 				lang(language) {
 					this.language = elements.language.value = document.documentElement.lang = language;
-					Object.keys(text.en).forEach(key => elements[key] && (elements[key].textContent = this.string(key)));
+					Object.keys(text.en).forEach(key => {
+						if (elements[key]) elements[key].textContent = this.string(key);
+					});
 					elements.headName.textContent = this.string('name');
 					elements.headWin.textContent = this.string('winRatePlaceholder');
 					elements.headTie.textContent = this.string('tieRatePlaceholder');
 					[...elements.theme.options].forEach(option => option.textContent = this.string(option.value + 'Theme'));
 					[['language', 'languageLabel'], ['theme', 'themeLabel']].forEach(([id, key]) => elements[id].setAttribute('aria-label', this.string(key)));
 					this.renderCompetitors();
-					!elements.results.classList.contains('hidden') && this.data && this.renderResults();
+					if (!elements.results.classList.contains('hidden') && this.data) {
+						this.renderResults();
+					}
 				}
 				display(section) {
 					['input', 'results'].forEach(id => elements[id].classList.toggle('hidden', id !== section));
-					section === 'results' ? (elements.results.setAttribute('tabindex', '-1'), elements.results.focus()) : elements.mainName.focus();
+					if (section === 'results') {
+						elements.results.setAttribute('tabindex', '-1');
+						elements.results.focus();
+					} else {
+						elements.mainName.focus();
+					}
 				}
 				error(message) {
 					elements.error.textContent = message || '';
@@ -498,7 +523,12 @@
 					elements.list.lastElementChild?.querySelector('input')?.focus();
 				}
 				clear() {
-					confirm(this.string('clearConfirm')) && (this.competitors = [], this.renderCompetitors(), this.add(), this.error());
+					if (confirm(this.string('clearConfirm'))) {
+						this.competitors = [];
+						this.renderCompetitors();
+						this.add();
+						this.error();
+					}
 				}
 				remove(id) {
 					this.error();
@@ -506,7 +536,11 @@
 					this.competitors = this.competitors.filter(c => c.id !== id);
 					this.renderCompetitors();
 					const target = Math.min(index, this.competitors.length - 1);
-					target >= 0 ? elements.list.children[target]?.querySelector('.danger')?.focus() : elements.add.focus();
+					if (target >= 0) {
+						elements.list.children[target]?.querySelector('.danger')?.focus();
+					} else {
+						elements.add.focus();
+					}
 				}
 				renderCompetitors() {
 					elements.headTie.classList.toggle('hidden', !this.allowTies);
@@ -524,26 +558,46 @@
 					reader.onload = event => {
 						try {
 							const rows = parseCSV(event.target.result);
-							!rows.length && (() => { throw 0; })();
+							if (!rows.length) throw new Error();
+
 							const header = rows[0];
 							const find = regex => header.findIndex(cell => regex.test(cell));
-							let nameIndex = find(/name|nama/i), winIndex = find(/win|menang/i), tieIndex = find(/tie|seri/i);
-							(nameIndex < 0 || winIndex < 0) && (
-								(nameIndex = 0, winIndex = 1),
-								header.every(cell => /^\d+$/.test(cell.replace(/[.,]/g, '').trim())) && (winIndex = header.findIndex(cell => /^\d+$/.test(cell.replace(/[.,]/g, '').trim())), nameIndex = 1 - winIndex)
-							);
-							(nameIndex < 0 || winIndex < 0) && (() => { throw 0; })();
+							let nameIndex = find(/name|nama/i);
+							let winIndex = find(/win|menang/i);
+							let tieIndex = find(/tie|seri/i);
+
+							if (nameIndex < 0 || winIndex < 0) {
+								nameIndex = 0;
+								winIndex = 1;
+								const isAllNumbers = header.every(cell => /^\d+$/.test(cell.replace(/[.,]/g, '').trim()));
+								if (isAllNumbers) {
+									winIndex = header.findIndex(cell => /^\d+$/.test(cell.replace(/[.,]/g, '').trim()));
+									nameIndex = 1 - winIndex;
+								}
+							}
+
+							if (nameIndex < 0 || winIndex < 0) throw new Error();
+
 							const competitors = rows.slice(1).map(cells => {
-								return cells[nameIndex] ? {
+								if (!cells[nameIndex]) return null;
+								const winRate = +((cells[winIndex] || '').replace(/[^\d.]/g, '')) || 0;
+								const tieRate = tieIndex >= 0 ? (+((cells[tieIndex] || '').replace(/[^\d.]/g, '')) || 0) : 0;
+								return {
 									id: this.nextIndex++,
 									name: cells[nameIndex],
-									winRate: +((cells[winIndex] || '').replace(/[^\d.]/g, '')) || 0,
-									tieRate: tieIndex >= 0 ? (+((cells[tieIndex] || '').replace(/[^\d.]/g, '')) || 0) : 0
-								} : null;
+									winRate,
+									tieRate
+								};
 							}).filter(Boolean);
-							!competitors.length && (() => { throw 0; })();
+
+							if (!competitors.length) throw new Error();
+
 							this.competitors = competitors;
-							tieIndex >= 0 && (this.allowTies = true, elements.allowTies.checked = true);
+							if (tieIndex >= 0) {
+								this.allowTies = true;
+								elements.allowTies.checked = true;
+							}
+
 							this.error();
 							this.renderCompetitors();
 							elements.file.value = '';
@@ -551,7 +605,7 @@
 							this.error(this.string('alertImport'));
 						}
 					};
-					file && reader.readAsText(file);
+					if (file) reader.readAsText(file);
 				}
 				calculate() {
 					this.error();
@@ -562,7 +616,11 @@
 					const error = !this.competitors.length ? 'alertCompetitors' :
 					              this.hasInvalidRates() ? 'alertInvalidRate' : null;
 
-					error ? this.error(this.string(error)) : this.performCalculation(mainName);
+					if (error) {
+						this.error(this.string(error));
+					} else {
+						this.performCalculation(mainName);
+					}
 				}
 
 				hasInvalidRates() {
@@ -610,18 +668,18 @@
 					};
 				}
 				renderResults() {
-					this.data && (() => {
+					if (this.data) {
 						const { results } = this.data;
 						elements.resultsTable.innerHTML = `<h2>${this.string('resultsTitle')}</h2><p class="info">${this.string('infoText')}</p><table><thead><tr><th>${this.string('name')}</th><th>${this.string('winRate')}</th><th>${this.string('tieRate')}</th><th>${this.string('effectiveScore')}</th><th>${this.string('eloRating')}</th><th>${this.string('eloDifference')}</th></tr></thead><tbody>${results.map(result => `<tr><td><strong>${escape(result.name)}</strong></td><td>${this.format(result.winRate, { maximumFractionDigits: 1 })}%</td><td>${this.format(result.tieRate, { maximumFractionDigits: 1 })}%</td><td>${this.format(result.effectiveScore * 100, { maximumFractionDigits: 1 })}%</td><td><strong>${Math.round(result.eloRating)}</strong></td><td>${result.eloDiff > 0 ? '+' : ''}${Math.round(result.eloDiff)}</td></tr>`).join('')}</tbody></table>`;
-					})();
+					}
 				}
 				export() {
-					this.data && (() => {
+					if (this.data) {
 						const { results } = this.data;
 						const headers = [this.string('name'), this.string('winRate'), this.string('tieRate'), this.string('effectiveScore'), this.string('eloRating'), this.string('eloDifference')].join(',');
 						const csv = headers + '\n' + results.map(result => `"${result.name.replace(/"/g, '""')}",${result.winRate},${result.tieRate},${this.format(result.effectiveScore * 100, { minimumFractionDigits: 1, maximumFractionDigits: 1 })},${Math.round(result.eloRating)},${Math.round(result.eloDiff)}`).join('\n');
 						Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv], { type: 'text/csv' })), download: `elo_ratings_${new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-')}.csv` }).click();
-					})();
+					}
 				}
 			}
 			new EloCalc();
