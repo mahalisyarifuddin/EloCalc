@@ -192,6 +192,18 @@
 				line-height: 1.6;
 				margin-bottom: 1rem;
 			}
+			.bar-container {
+				background: var(--muted);
+				border-radius: 4px;
+				height: 8px;
+				min-width: 80px;
+				width: 100%;
+				overflow: hidden;
+			}
+			.bar {
+				background: var(--primary);
+				height: 100%;
+			}
 			.actions {
 				display: flex;
 				gap: 1rem;
@@ -288,6 +300,7 @@
 					effectiveScore: 'Effective Score',
 					eloRating: 'Elo Rating',
 					eloDifference: 'Elo Diff',
+					relativeStrength: 'Relative Strength',
 					resultsTitle: 'Calculated Elo Ratings',
 					infoText: 'Inputs are the competitor\'s win/tie rates against the main contender. The 400-point rule: A 400-point difference equals ~91% expected win rate. Ties count as 0.5 wins. All ratings are normalized to average 1000.',
 					alertImport: 'Error importing file. Please ensure it is a valid CSV/TSV with "Name", "Win", and optional "Tie" columns.',
@@ -322,6 +335,7 @@
 					effectiveScore: 'Skor Efektif',
 					eloRating: 'Peringkat Elo',
 					eloDifference: 'Selisih Elo',
+					relativeStrength: 'Kekuatan Relatif',
 					resultsTitle: 'Peringkat Elo Terhitung',
 					infoText: 'Input adalah tingkat menang/seri kompetitor melawan pesaing utama. Aturan 400 poin: Selisih 400 poin setara dengan ~91% tingkat menang yang diharapkan. Seri dihitung sebagai 0.5 kemenangan. Semua peringkat dinormalisasi ke rata-rata 1000.',
 					alertImport: 'Gagal mengimpor file. Pastikan format CSV/TSV valid dengan kolom "Nama", "Menang", dan opsional "Seri".',
@@ -670,7 +684,8 @@
 				renderResults() {
 					if (this.data) {
 						const { results } = this.data;
-						elements.resultsTable.innerHTML = `<h2>${this.string('resultsTitle')}</h2><p class="info">${this.string('infoText')}</p><table><thead><tr><th>${this.string('name')}</th><th>${this.string('winRate')}</th><th>${this.string('tieRate')}</th><th>${this.string('effectiveScore')}</th><th>${this.string('eloRating')}</th><th>${this.string('eloDifference')}</th></tr></thead><tbody>${results.map(result => `<tr><td><strong>${escape(result.name)}</strong></td><td>${this.format(result.winRate, { maximumFractionDigits: 1 })}%</td><td>${this.format(result.tieRate, { maximumFractionDigits: 1 })}%</td><td>${this.format(result.effectiveScore * 100, { maximumFractionDigits: 1 })}%</td><td><strong>${Math.round(result.eloRating)}</strong></td><td>${result.eloDiff > 0 ? '+' : ''}${Math.round(result.eloDiff)}</td></tr>`).join('')}</tbody></table>`;
+						const maxElo = Math.max(...results.map(r => r.eloRating), 1);
+						elements.resultsTable.innerHTML = `<h2>${this.string('resultsTitle')}</h2><p class="info">${this.string('infoText')}</p><table><thead><tr><th>${this.string('name')}</th><th>${this.string('winRate')}</th><th>${this.string('tieRate')}</th><th>${this.string('effectiveScore')}</th><th>${this.string('eloRating')}</th><th>${this.string('relativeStrength')}</th><th>${this.string('eloDifference')}</th></tr></thead><tbody>${results.map(result => `<tr><td><strong>${escape(result.name)}</strong></td><td>${this.format(result.winRate, { maximumFractionDigits: 1 })}%</td><td>${this.format(result.tieRate, { maximumFractionDigits: 1 })}%</td><td>${this.format(result.effectiveScore * 100, { maximumFractionDigits: 1 })}%</td><td><strong>${Math.round(result.eloRating)}</strong></td><td><div class="bar-container" title="${Math.round(result.eloRating)}"><div class="bar" style="width:${Math.max(0, result.eloRating / maxElo * 100)}%"></div></div></td><td>${result.eloDiff > 0 ? '+' : ''}${Math.round(result.eloDiff)}</td></tr>`).join('')}</tbody></table>`;
 					}
 				}
 				export() {
