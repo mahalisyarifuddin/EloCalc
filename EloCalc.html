@@ -592,7 +592,13 @@
 
 							if (nameIndex < 0 || winIndex < 0) throw new Error();
 
-							const competitors = rows.slice(1).map(cells => {
+							// Detect if the first row is actually data (headless CSV)
+							// If keywords were found, it's definitely a header.
+							// If not, checks if the determined 'win' column contains a number.
+							const isWinNum = !isNaN(parseFloat((header[winIndex] || '').replace(',', '.')));
+							const hasHeader = (find(/name|nama/i) >= 0 || find(/win|menang/i) >= 0) || !isWinNum;
+
+							const competitors = (hasHeader ? rows.slice(1) : rows).map(cells => {
 								if (!cells[nameIndex]) return null;
 								const winRate = +((cells[winIndex] || '').replace(/[^\d.]/g, '')) || 0;
 								const tieRate = tieIndex >= 0 ? (+((cells[tieIndex] || '').replace(/[^\d.]/g, '')) || 0) : 0;
