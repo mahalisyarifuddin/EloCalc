@@ -209,6 +209,10 @@
 				gap: 1rem;
 				margin-top: 1rem;
 			}
+			.table-wrapper {
+				overflow-x: auto;
+				-webkit-overflow-scrolling: touch;
+			}
 			@media(max-width: 768px) {
 				.selectors {
 					position: static;
@@ -691,7 +695,7 @@
 					if (this.data) {
 						const { results } = this.data;
 						const maxElo = Math.max(...results.map(r => r.eloRating), 1);
-						elements.resultsTable.innerHTML = `<h2>${this.string('resultsTitle')}</h2><p class="info">${this.string('infoText')}</p><table><thead><tr><th>${this.string('name')}</th><th>${this.string('winRate')}</th><th>${this.string('tieRate')}</th><th>${this.string('effectiveScore')}</th><th>${this.string('eloRating')}</th><th>${this.string('relativeStrength')}</th><th>${this.string('eloDifference')}</th></tr></thead><tbody>${results.map(result => `<tr><td><strong>${escape(result.name)}</strong></td><td>${this.format(result.winRate, { maximumFractionDigits: 1 })}%</td><td>${this.format(result.tieRate, { maximumFractionDigits: 1 })}%</td><td>${this.format(result.effectiveScore * 100, { maximumFractionDigits: 1 })}%</td><td><strong>${Math.round(result.eloRating)}</strong></td><td><div class="bar-container" title="${Math.round(result.eloRating)}"><div class="bar" style="width:${Math.max(0, result.eloRating / maxElo * 100)}%"></div></div></td><td>${result.eloDiff > 0 ? '+' : ''}${Math.round(result.eloDiff)}</td></tr>`).join('')}</tbody></table>`;
+						elements.resultsTable.innerHTML = `<h2>${this.string('resultsTitle')}</h2><p class="info">${this.string('infoText')}</p><div class="table-wrapper"><table><thead><tr><th>${this.string('name')}</th><th>${this.string('winRate')}</th><th>${this.string('tieRate')}</th><th>${this.string('effectiveScore')}</th><th>${this.string('eloRating')}</th><th>${this.string('relativeStrength')}</th><th>${this.string('eloDifference')}</th></tr></thead><tbody>${results.map(result => `<tr><td><strong>${escape(result.name)}</strong></td><td>${this.format(result.winRate, { maximumFractionDigits: 1 })}%</td><td>${this.format(result.tieRate, { maximumFractionDigits: 1 })}%</td><td>${this.format(result.effectiveScore * 100, { maximumFractionDigits: 1 })}%</td><td><strong>${Math.round(result.eloRating)}</strong></td><td><div class="bar-container" title="${Math.round(result.eloRating)}" aria-hidden="true"><div class="bar" style="width:${Math.max(0, result.eloRating / maxElo * 100)}%"></div></div></td><td>${result.eloDiff > 0 ? '+' : ''}${Math.round(result.eloDiff)}</td></tr>`).join('')}</tbody></table></div>`;
 					}
 				}
 				export() {
