@@ -213,6 +213,22 @@
 				overflow-x: auto;
 				-webkit-overflow-scrolling: touch;
 			}
+			#listHeaders {
+				position: -webkit-sticky;
+				position: sticky;
+				top: 0;
+				z-index: 10;
+				background: var(--surface);
+				padding: .75rem 0;
+				border-bottom: 1px solid var(--border);
+				margin-bottom: .5rem;
+			}
+			th {
+				position: -webkit-sticky;
+				position: sticky;
+				top: 0;
+				z-index: 5;
+			}
 			@media(max-width: 768px) {
 				.selectors {
 					position: static;
@@ -250,7 +266,7 @@
 					<label for="allowTies" id="allowTiesLabel" style="margin:0"></label>
 				</div>
 				<h3 id="competitorsHeader" style="margin-top:1.5rem"></h3>
-				<div id="listHeaders" class="competitor-row" style="margin-bottom:.25rem">
+				<div id="listHeaders" class="competitor-row">
 					<label id="headName" style="flex:2;font-size:.85rem;opacity:.8"></label>
 					<label id="headWin" style="flex:1;font-size:.85rem;opacity:.8"></label>
 					<label id="headTie" style="flex:1;font-size:.85rem;opacity:.8"></label>
