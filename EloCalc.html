@@ -620,8 +620,8 @@
 
 							const competitors = (hasHeader ? rows.slice(1) : rows).map(cells => {
 								if (!cells[nameIndex]) return null;
-								const winRate = +((cells[winIndex] || '').replace(/[^\d.]/g, '')) || 0;
-								const tieRate = tieIndex >= 0 ? (+((cells[tieIndex] || '').replace(/[^\d.]/g, '')) || 0) : 0;
+								const winRate = +((cells[winIndex] || '').replace(/,/g, '.').replace(/[^\d.]/g, '')) || 0;
+								const tieRate = tieIndex >= 0 ? (+((cells[tieIndex] || '').replace(/,/g, '.').replace(/[^\d.]/g, '')) || 0) : 0;
 								return {
 									id: this.nextIndex++,
 									name: cells[nameIndex],
