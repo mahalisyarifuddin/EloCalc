@@ -216,6 +216,9 @@
 				overflow-y: auto;
 				border-bottom: 1px solid var(--border);
 			}
+			.highlight {
+				background-color: var(--highlight-bg);
+			}
 			#listHeaders {
 				position: -webkit-sticky;
 				position: sticky;
@@ -328,7 +331,8 @@
 					infoText: 'Inputs are the competitor\'s win/tie rates against the main contender. The 400-point rule: A 400-point difference equals ~91% expected win rate. Ties count as 0.5 wins. All ratings are normalized to average 1000.',
 					alertImport: 'Error importing file. Please ensure it is a valid CSV/TSV with "Name", "Win", and optional "Tie" columns.',
 					languageLabel: 'Language',
-					themeLabel: 'Theme'
+					themeLabel: 'Theme',
+					rank: '#'
 				},
 				id: {
 					title: 'EloCalc',
@@ -363,7 +367,8 @@
 					infoText: 'Input adalah tingkat menang/seri kompetitor melawan pesaing utama. Aturan 400 poin: Selisih 400 poin setara dengan ~91% tingkat menang yang diharapkan. Seri dihitung sebagai 0.5 kemenangan. Semua peringkat dinormalisasi ke rata-rata 1000.',
 					alertImport: 'Gagal mengimpor file. Pastikan format CSV/TSV valid dengan kolom "Nama", "Menang", dan opsional "Seri".',
 					languageLabel: 'Bahasa',
-					themeLabel: 'Tema'
+					themeLabel: 'Tema',
+					rank: '#'
 				}
 			};
 			const elements = new Proxy({}, { get: (_, id) => document.getElementById(id) });
@@ -676,7 +681,7 @@
 
 				performCalculation(mainName) {
 					const rawResults = this.competitors.map(comp => this.calculateRow(comp));
-					const allRaw = [{ name: mainName, winRate: 50, tieRate: 0, effectiveScore: 0.5, rawElo: 0 }, ...rawResults];
+					const allRaw = [{ name: mainName, winRate: 50, tieRate: 0, effectiveScore: 0.5, rawElo: 0, isMain: true }, ...rawResults];
 					const avgElo = allRaw.reduce((sum, r) => sum + r.rawElo, 0) / allRaw.length;
 					const adjustment = 1000 - avgElo;
 
@@ -714,14 +719,14 @@
 					if (this.data) {
 						const { results } = this.data;
 						const maxElo = Math.max(...results.map(r => r.eloRating), 1);
-						elements.resultsTable.innerHTML = `<h2>${this.string('resultsTitle')}</h2><p class="info">${this.string('infoText')}</p><div class="table-wrapper"><table><thead><tr><th>${this.string('name')}</th><th>${this.string('winRate')}</th><th>${this.string('tieRate')}</th><th>${this.string('effectiveScore')}</th><th>${this.string('eloRating')}</th><th>${this.string('relativeStrength')}</th><th>${this.string('eloDifference')}</th></tr></thead><tbody>${results.map(result => `<tr><td><strong>${escape(result.name)}</strong></td><td>${this.format(result.winRate, { maximumFractionDigits: 1 })}%</td><td>${this.format(result.tieRate, { maximumFractionDigits: 1 })}%</td><td>${this.format(result.effectiveScore * 100, { maximumFractionDigits: 1 })}%</td><td><strong>${Math.round(result.eloRating)}</strong></td><td><div class="bar-container" title="${Math.round(result.eloRating)}" aria-hidden="true"><div class="bar" style="width:${Math.max(0, result.eloRating / maxElo * 100)}%"></div></div></td><td>${result.eloDiff > 0 ? '+' : ''}${Math.round(result.eloDiff)}</td></tr>`).join('')}</tbody></table></div>`;
+						elements.resultsTable.innerHTML = `<h2>${this.string('resultsTitle')}</h2><p class="info">${this.string('infoText')}</p><div class="table-wrapper"><table><thead><tr><th>${this.string('rank')}</th><th>${this.string('name')}</th><th>${this.string('winRate')}</th><th>${this.string('tieRate')}</th><th>${this.string('effectiveScore')}</th><th>${this.string('eloRating')}</th><th>${this.string('relativeStrength')}</th><th>${this.string('eloDifference')}</th></tr></thead><tbody>${results.map((result, i) => `<tr class="${result.isMain ? 'highlight' : ''}"><td>${i + 1}</td><td><strong>${escape(result.name)}</strong></td><td>${this.format(result.winRate, { maximumFractionDigits: 1 })}%</td><td>${this.format(result.tieRate, { maximumFractionDigits: 1 })}%</td><td>${this.format(result.effectiveScore * 100, { maximumFractionDigits: 1 })}%</td><td><strong>${Math.round(result.eloRating)}</strong></td><td><div class="bar-container" title="${Math.round(result.eloRating)}" aria-hidden="true"><div class="bar" style="width:${Math.max(0, result.eloRating / maxElo * 100)}%"></div></div></td><td>${result.eloDiff > 0 ? '+' : ''}${Math.round(result.eloDiff)}</td></tr>`).join('')}</tbody></table></div>`;
 					}
 				}
 				export() {
 					if (this.data) {
 						const { results } = this.data;
-						const headers = [this.string('name'), this.string('winRate'), this.string('tieRate'), this.string('effectiveScore'), this.string('eloRating'), this.string('eloDifference')].join(',');
-						const csv = headers + '\n' + results.map(result => `"${result.name.replace(/"/g, '""')}",${result.winRate},${result.tieRate},${this.format(result.effectiveScore * 100, { minimumFractionDigits: 1, maximumFractionDigits: 1 })},${Math.round(result.eloRating)},${Math.round(result.eloDiff)}`).join('\n');
+						const headers = [this.string('rank'), this.string('name'), this.string('winRate'), this.string('tieRate'), this.string('effectiveScore'), this.string('eloRating'), this.string('eloDifference')].join(',');
+						const csv = headers + '\n' + results.map((result, i) => `${i + 1},"${result.name.replace(/"/g, '""')}",${result.winRate},${result.tieRate},${this.format(result.effectiveScore * 100, { minimumFractionDigits: 1, maximumFractionDigits: 1 })},${Math.round(result.eloRating)},${Math.round(result.eloDiff)}`).join('\n');
 						Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv], { type: 'text/csv' })), download: `elo_ratings_${new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-')}.csv` }).click();
 					}
 				}
