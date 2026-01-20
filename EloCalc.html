@@ -451,7 +451,8 @@
 					elements.theme.onchange = event => this.theme(event.target.value);
 					elements.allowTies.onchange = event => {
 						this.allowTies = event.target.checked;
-						this.renderCompetitors();
+						elements.headTie.classList.toggle('hidden', !this.allowTies);
+						document.querySelectorAll('.tie-input').forEach(el => el.classList.toggle('hidden', !this.allowTies));
 					};
 					elements.allowTies.checked = this.allowTies;
 					document.onkeydown = event => this.key(event);
@@ -590,7 +591,7 @@
 						`<div class="competitor-row" data-id="${comp.id}">
 							<input type="text" class="name-input" value="${escape(comp.name)}" placeholder="${this.string('competitorPlaceholder')}" aria-label="${this.string('competitorPlaceholder')} ${i + 1}">
 							<input type="number" class="win-input" value="${comp.winRate}" placeholder="${this.string('winRatePlaceholder')}" min="0" max="100" step="0.1" aria-label="${this.string('winRatePlaceholder')} ${i + 1}">
-							${this.allowTies ? `<input type="number" class="tie-input" value="${comp.tieRate}" placeholder="${this.string('tieRatePlaceholder')}" min="0" max="100" step="0.1" aria-label="${this.string('tieRatePlaceholder')} ${i + 1}">` : ''}
+							<input type="number" class="tie-input ${this.allowTies ? '' : 'hidden'}" value="${comp.tieRate}" placeholder="${this.string('tieRatePlaceholder')}" min="0" max="100" step="0.1" aria-label="${this.string('tieRatePlaceholder')} ${i + 1}">
 							<button class="danger" aria-label="${this.string('removeCompetitor')} ${i + 1}">×</button>
 						</div>`
 					).join('');
