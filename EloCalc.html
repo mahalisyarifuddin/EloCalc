@@ -219,6 +219,10 @@
 			.highlight {
 				background-color: var(--highlight-bg);
 			}
+			input:out-of-range {
+				border-color: var(--danger);
+				background-color: var(--background);
+			}
 			#listHeaders {
 				position: -webkit-sticky;
 				position: sticky;
@@ -505,9 +509,8 @@
 				}
 
 				updateRate(comp, prop, value, target) {
-					const num = value === '' ? '' : Math.max(0, Math.min(100, parseFloat(value) || 0));
+					const num = value === '' ? '' : (parseFloat(value) || 0);
 					comp[prop] = num;
-					if (target) target.value = num;
 				}
 
 				focusNext(target, row) {
