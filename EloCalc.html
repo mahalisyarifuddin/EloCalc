@@ -223,6 +223,10 @@
 				border-color: var(--danger);
 				background-color: var(--background);
 			}
+			.invalid {
+				border-color: var(--danger);
+				background-color: var(--background);
+			}
 			#listHeaders {
 				position: -webkit-sticky;
 				position: sticky;
@@ -450,13 +454,19 @@
 					};
 					Object.entries(handlers).forEach(([id, handler]) => elements[id].onclick = handler);
 					elements.file.onchange = event => this.load(event.target.files[0]);
-					elements.input.oninput = () => this.error();
+					elements.input.oninput = event => {
+						this.error();
+						if (event.target.matches('.win-input, .tie-input')) {
+							this.validateRow(event.target.closest('.competitor-row'));
+						}
+					};
 					elements.language.onchange = event => this.lang(event.target.value);
 					elements.theme.onchange = event => this.theme(event.target.value);
 					elements.allowTies.onchange = event => {
 						this.allowTies = event.target.checked;
 						elements.headTie.classList.toggle('hidden', !this.allowTies);
 						document.querySelectorAll('.tie-input').forEach(el => el.classList.toggle('hidden', !this.allowTies));
+						document.querySelectorAll('.competitor-row').forEach(row => this.validateRow(row));
 					};
 					elements.allowTies.checked = this.allowTies;
 					document.onkeydown = event => this.key(event);
@@ -590,14 +600,15 @@
 				}
 				renderCompetitors() {
 					elements.headTie.classList.toggle('hidden', !this.allowTies);
-					elements.list.innerHTML = this.competitors.map((comp, i) => 
-						`<div class="competitor-row" data-id="${comp.id}">
+					elements.list.innerHTML = this.competitors.map((comp, i) => {
+						const invalid = this.isInvalid(comp) ? 'invalid' : '';
+						return `<div class="competitor-row" data-id="${comp.id}">
 							<input type="text" class="name-input" value="${escape(comp.name)}" placeholder="${this.string('competitorPlaceholder')}" aria-label="${this.string('competitorPlaceholder')} ${i + 1}">
-							<input type="number" class="win-input" value="${comp.winRate}" placeholder="${this.string('winRatePlaceholder')}" min="0" max="100" step="0.1" aria-label="${this.string('winRatePlaceholder')} ${i + 1}">
-							<input type="number" class="tie-input ${this.allowTies ? '' : 'hidden'}" value="${comp.tieRate}" placeholder="${this.string('tieRatePlaceholder')}" min="0" max="100" step="0.1" aria-label="${this.string('tieRatePlaceholder')} ${i + 1}">
+							<input type="number" class="win-input ${invalid}" value="${comp.winRate}" placeholder="${this.string('winRatePlaceholder')}" min="0" max="100" step="0.1" aria-label="${this.string('winRatePlaceholder')} ${i + 1}">
+							<input type="number" class="tie-input ${this.allowTies ? '' : 'hidden'} ${invalid}" value="${comp.tieRate}" placeholder="${this.string('tieRatePlaceholder')}" min="0" max="100" step="0.1" aria-label="${this.string('tieRatePlaceholder')} ${i + 1}">
 							<button class="danger" aria-label="${this.string('removeCompetitor')} ${i + 1}">×</button>
-						</div>`
-					).join('');
+						</div>`;
+					}).join('');
 				}
 				load(file) {
 					const reader = new FileReader();
@@ -719,6 +730,28 @@
 						rawElo: eloDiff
 					};
 				}
+
+				isInvalid(comp) {
+					const tieRate = this.allowTies ? +comp.tieRate : 0;
+					return (+comp.winRate + tieRate) > 100;
+				}
+
+				validateRow(row) {
+					if (!row) return;
+					const winInput = row.querySelector('.win-input');
+					const tieInput = row.querySelector('.tie-input');
+					if (!winInput || !tieInput) return;
+
+					const comp = {
+						winRate: winInput.value,
+						tieRate: tieInput.value
+					};
+					const invalid = this.isInvalid(comp);
+
+					winInput.classList.toggle('invalid', invalid);
+					tieInput.classList.toggle('invalid', invalid && this.allowTies);
+				}
+
 				renderResults() {
 					if (this.data) {
 						const { results } = this.data;
