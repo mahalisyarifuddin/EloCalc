@@ -299,6 +299,7 @@
 			<div id="results" class="hidden">
 				<div class="actions">
 					<button id="edit" class="secondary" style="flex:1"></button>
+					<button id="copy" class="secondary" style="flex:1"></button>
 					<button id="export" class="success" style="flex:1"></button>
 				</div>
 				<div id="resultsTable"></div>
@@ -319,6 +320,8 @@
 					calculate: 'Calculate Ratings',
 					edit: 'Edit Inputs',
 					export: 'Export to CSV',
+					copy: 'Copy Table',
+					copySuccess: 'Copied!',
 					import: 'Import CSV',
 					clear: 'Clear All',
 					clearConfirm: 'Are you sure you want to clear all competitors?',
@@ -355,6 +358,8 @@
 					calculate: 'Hitung Peringkat',
 					edit: 'Ubah Input',
 					export: 'Ekspor ke CSV',
+					copy: 'Salin Tabel',
+					copySuccess: 'Tersalin!',
 					import: 'Impor CSV',
 					clear: 'Hapus Semua',
 					clearConfirm: 'Apakah Anda yakin ingin menghapus semua kompetitor?',
@@ -449,6 +454,7 @@
 						clear: () => this.clear(),
 						calculate: () => this.calculate(),
 						edit: () => this.display('input'),
+						copy: () => this.copy(),
 						export: () => this.export(),
 						import: () => elements.file.click()
 					};
@@ -765,6 +771,18 @@
 						const headers = [this.string('rank'), this.string('name'), this.string('winRate'), this.string('tieRate'), this.string('effectiveScore'), this.string('eloRating'), this.string('eloDifference')].join(',');
 						const csv = headers + '\n' + results.map((result, i) => `${i + 1},"${result.name.replace(/"/g, '""')}",${result.winRate},${result.tieRate},${this.format(result.effectiveScore * 100, { minimumFractionDigits: 1, maximumFractionDigits: 1 })},${Math.round(result.eloRating)},${Math.round(result.eloDiff)}`).join('\n');
 						Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv], { type: 'text/csv' })), download: `elo_ratings_${new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-')}.csv` }).click();
+					}
+				}
+				copy() {
+					if (this.data) {
+						const { results } = this.data;
+						const headers = [this.string('rank'), this.string('name'), this.string('winRate'), this.string('tieRate'), this.string('effectiveScore'), this.string('eloRating'), this.string('eloDifference')].join('\t');
+						const tsv = headers + '\n' + results.map((result, i) => `${i + 1}\t"${result.name.replace(/"/g, '""')}"\t${result.winRate}\t${result.tieRate}\t${this.format(result.effectiveScore * 100, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}\t${Math.round(result.eloRating)}\t${Math.round(result.eloDiff)}`).join('\n');
+						navigator.clipboard.writeText(tsv).then(() => {
+							const originalText = elements.copy.textContent;
+							elements.copy.textContent = this.string('copySuccess');
+							setTimeout(() => elements.copy.textContent = originalText, 2000);
+						});
 					}
 				}
 			}
