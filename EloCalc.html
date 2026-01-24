@@ -253,6 +253,45 @@
 					flex-direction: column;
 				}
 			}
+
+			/* Razor Refactor: Extracted styles */
+			.options-row {
+				align-items: center;
+				margin-top: 1rem;
+				gap: .5rem;
+			}
+			#allowTies {
+				width: auto;
+			}
+			#allowTiesLabel {
+				margin: 0;
+			}
+			#competitorsHeader {
+				margin-top: 1.5rem;
+			}
+			#headName {
+				flex: 2;
+				font-size: .85rem;
+				opacity: .8;
+			}
+			#headWin, #headTie {
+				flex: 1;
+				font-size: .85rem;
+				opacity: .8;
+			}
+			.hidden-btn {
+				visibility: hidden;
+				cursor: default;
+			}
+			#list {
+				margin-bottom: 1rem;
+			}
+			.controls-row {
+				gap: .5rem;
+			}
+			#add, #clear, #import, #edit, #copy, #export {
+				flex: 1;
+			}
 		</style>
 	</head>
 	<body>
@@ -275,22 +314,22 @@
 					<label id="mainLabel" for="mainName"></label>
 					<input type="text" id="mainName" value="Player A">
 				</div>
-				<div class="row" style="align-items:center;margin-top:1rem;gap:.5rem">
-					<input type="checkbox" id="allowTies" style="width:auto">
-					<label for="allowTies" id="allowTiesLabel" style="margin:0"></label>
+				<div class="row options-row">
+					<input type="checkbox" id="allowTies">
+					<label for="allowTies" id="allowTiesLabel"></label>
 				</div>
-				<h3 id="competitorsHeader" style="margin-top:1.5rem"></h3>
+				<h3 id="competitorsHeader"></h3>
 				<div id="listHeaders" class="competitor-row">
-					<label id="headName" style="flex:2;font-size:.85rem;opacity:.8"></label>
-					<label id="headWin" style="flex:1;font-size:.85rem;opacity:.8"></label>
-					<label id="headTie" style="flex:1;font-size:.85rem;opacity:.8"></label>
-					<button style="visibility:hidden;cursor:default" aria-hidden="true">×</button>
+					<label id="headName"></label>
+					<label id="headWin"></label>
+					<label id="headTie"></label>
+					<button class="hidden-btn" aria-hidden="true">×</button>
 				</div>
-				<div id="list" style="margin-bottom:1rem"></div>
-				<div class="row" style="gap:.5rem">
-					<button id="add" class="secondary" style="flex:1"></button>
-					<button id="clear" class="secondary" style="flex:1"></button>
-					<button id="import" class="secondary" style="flex:1"></button>
+				<div id="list"></div>
+				<div class="row controls-row">
+					<button id="add" class="secondary"></button>
+					<button id="clear" class="secondary"></button>
+					<button id="import" class="secondary"></button>
 				</div>
 				<input type="file" id="file" accept=".csv,.tsv,.txt" class="hidden">
 				<span id="error" class="error hidden" aria-live="polite"></span>
@@ -298,9 +337,9 @@
 			</div>
 			<div id="results" class="hidden">
 				<div class="actions">
-					<button id="edit" class="secondary" style="flex:1"></button>
-					<button id="copy" class="secondary" style="flex:1"></button>
-					<button id="export" class="success" style="flex:1"></button>
+					<button id="edit" class="secondary"></button>
+					<button id="copy" class="secondary"></button>
+					<button id="export" class="success"></button>
 				</div>
 				<div id="resultsTable"></div>
 			</div>
