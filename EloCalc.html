@@ -146,7 +146,8 @@
 			.mode-elo #headTie,
 			.mode-elo #allowTies,
 			.mode-elo #allowTiesLabel,
-			.mode-elo .options-row {
+			.mode-elo .options-row,
+			.mode-elo .group {
 				display: none !important;
 			}
 			.mode-win .elo-input,
@@ -799,28 +800,33 @@
 
 				performCalculation(mainName) {
 					let allRaw = [];
+					let baselineId = 'main';
+
 					if (this.mode === 'win') {
 						const rawResults = this.competitors.map(comp => this.calculateRow(comp));
-						allRaw = [{ name: mainName, rawElo: 0, isMain: true, id: 'main' }, ...rawResults];
+						allRaw = [{ name: mainName, rawElo: 0, isMain: true, id: 'main', winRate: 50, tieRate: 0 }, ...rawResults];
 						const avgElo = allRaw.reduce((sum, r) => sum + r.rawElo, 0) / allRaw.length;
 						const adjustment = 1000 - avgElo;
 						allRaw.forEach(r => r.eloRating = r.rawElo + adjustment);
 					} else {
-						const mainElo = parseFloat(elements.mainElo.value) || 1000;
-						allRaw = [
-							{ name: mainName, eloRating: mainElo, isMain: true, id: 'main' },
-							...this.competitors.map(c => ({
-								name: c.name.trim() || `Competitor ${c.id}`,
-								eloRating: parseFloat(c.elo) || 0,
-								id: c.id
-							}))
-						];
+						allRaw = this.competitors.map(c => ({
+							name: c.name.trim() || `Competitor ${c.id}`,
+							eloRating: parseFloat(c.elo) || 0,
+							id: c.id
+						}));
+						if (allRaw.length > 0) {
+							// Sort first to find the top Elo as default baseline? Or just use the first?
+							// Let's use the first one in the list as default if not sorted.
+							// Actually, let's just pick the one with the highest Elo as default baseline for display?
+							// Or just the first one. Let's stick to the first one for stability.
+							baselineId = allRaw[0].id;
+						}
 					}
 
 					this.data = {
 						results: allRaw.sort((a, b) => b.eloRating - a.eloRating),
 						allowTies: this.allowTies,
-						baselineId: 'main'
+						baselineId: this.data?.baselineId && allRaw.find(r => r.id === this.data.baselineId) ? this.data.baselineId : baselineId
 					};
 
 					this.renderResults();
@@ -838,7 +844,9 @@
 					return {
 						name: comp.name.trim() || `Competitor ${comp.id}`,
 						rawElo: eloDiff,
-						id: comp.id
+						id: comp.id,
+						winRate: +comp.winRate,
+						tieRate
 					};
 				}
 
@@ -880,7 +888,7 @@
 								...r,
 								eloDiff,
 								effectiveScore,
-								displayWinRate: effectiveScore * 100
+								displayWinRate: this.mode === 'win' ? r.winRate : effectiveScore * 100
 							};
 						});
 
@@ -896,6 +904,7 @@
 											<th>${this.string('rank')}</th>
 											<th>${this.string('name')}</th>
 											<th>${this.string('winRate')}</th>
+											${this.mode === 'win' ? `<th>${this.string('tieRate')}</th>` : ''}
 											<th>${this.string('effectiveScore')}</th>
 											<th>${this.string('eloRating')}</th>
 											<th>${this.string('relativeStrength')}</th>
@@ -909,6 +918,7 @@
 												<td>${i + 1}</td>
 												<td><strong>${escape(result.name)}</strong></td>
 												<td>${this.format(result.displayWinRate, { maximumFractionDigits: 1 })}%</td>
+												${this.mode === 'win' ? `<td>${this.format(result.tieRate || 0, { maximumFractionDigits: 1 })}%</td>` : ''}
 												<td>${this.format(result.effectiveScore * 100, { maximumFractionDigits: 1 })}%</td>
 												<td><strong>${Math.round(result.eloRating)}</strong></td>
 												<td><div class="bar-container" title="${Math.round(result.eloRating)}" aria-hidden="true"><div class="bar" style="width:${Math.max(0, result.eloRating / maxElo * 100)}%"></div></div></td>
@@ -932,12 +942,29 @@
 					if (this.data) {
 						const { results, baselineId } = this.data;
 						const baselineComp = results.find(r => r.id === baselineId) || results[0];
-						const headers = [this.string('rank'), this.string('name'), this.string('winRate'), this.string('effectiveScore'), this.string('eloRating'), this.string('eloDifference')].join(',');
+						const headers = [
+							this.string('rank'),
+							this.string('name'),
+							this.string('winRate'),
+							...(this.mode === 'win' ? [this.string('tieRate')] : []),
+							this.string('effectiveScore'),
+							this.string('eloRating'),
+							this.string('eloDifference')
+						].join(',');
 
 						const csv = headers + '\n' + results.map((result, i) => {
 							const eloDiff = result.eloRating - baselineComp.eloRating;
 							const effectiveScore = 1 / (1 + Math.pow(10, -eloDiff / 400));
-							return `${i + 1},"${result.name.replace(/"/g, '""')}",${this.format(effectiveScore * 100, { minimumFractionDigits: 1, maximumFractionDigits: 1 })},${this.format(effectiveScore * 100, { minimumFractionDigits: 1, maximumFractionDigits: 1 })},${Math.round(result.eloRating)},${Math.round(eloDiff)}`;
+							const displayWinRate = this.mode === 'win' ? (result.winRate || 0) : (effectiveScore * 100);
+							return [
+								i + 1,
+								`"${result.name.replace(/"/g, '""')}"`,
+								this.format(displayWinRate, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+								...(this.mode === 'win' ? [result.tieRate || 0] : []),
+								this.format(effectiveScore * 100, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+								Math.round(result.eloRating),
+								Math.round(eloDiff)
+							].join(',');
 						}).join('\n');
 
 						Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv], { type: 'text/csv' })), download: `elo_ratings_${new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-')}.csv` }).click();
@@ -947,12 +974,29 @@
 					if (this.data) {
 						const { results, baselineId } = this.data;
 						const baselineComp = results.find(r => r.id === baselineId) || results[0];
-						const headers = [this.string('rank'), this.string('name'), this.string('winRate'), this.string('effectiveScore'), this.string('eloRating'), this.string('eloDifference')].join('\t');
+						const headers = [
+							this.string('rank'),
+							this.string('name'),
+							this.string('winRate'),
+							...(this.mode === 'win' ? [this.string('tieRate')] : []),
+							this.string('effectiveScore'),
+							this.string('eloRating'),
+							this.string('eloDifference')
+						].join('\t');
 
 						const tsv = headers + '\n' + results.map((result, i) => {
 							const eloDiff = result.eloRating - baselineComp.eloRating;
 							const effectiveScore = 1 / (1 + Math.pow(10, -eloDiff / 400));
-							return `${i + 1}\t"${result.name.replace(/"/g, '""')}"\t${this.format(effectiveScore * 100, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}\t${this.format(effectiveScore * 100, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}\t${Math.round(result.eloRating)}\t${Math.round(eloDiff)}`;
+							const displayWinRate = this.mode === 'win' ? (result.winRate || 0) : (effectiveScore * 100);
+							return [
+								i + 1,
+								`"${result.name.replace(/"/g, '""')}"`,
+								this.format(displayWinRate, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+								...(this.mode === 'win' ? [result.tieRate || 0] : []),
+								this.format(effectiveScore * 100, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+								Math.round(result.eloRating),
+								Math.round(eloDiff)
+							].join('\t');
 						}).join('\n');
 
 						navigator.clipboard.writeText(tsv).then(() => {
