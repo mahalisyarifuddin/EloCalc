@@ -9,26 +9,37 @@ EloCalc adalah alat berbasis peramban (browser) satu file untuk mengubah tingkat
 Antarmuka mendukung **Bahasa Inggris** dan **Bahasa Indonesia**.
 
 ## Cara Kerja
-Kalkulator mengambil penantang utama dan daftar lawan dengan tingkat kemenangan masing-masing melawan penantang utama, kemudian:
+Kalkulator beroperasi dalam dua mode:
 
+### Tingkat Menang -> Elo
+Mengambil penantang utama dan daftar lawan dengan tingkat kemenangan masing-masing.
 1.  **Skor Efektif**: Menghitung probabilitas kemenangan efektif (Menang % + 0.5 * Seri %).
-2.  **Selisih Elo**: Mengubah skor efektif menjadi selisih poin Elo menggunakan rumus distribusi logistik standar (aturan 400 poin).
-3.  **Normalisasi**: Menyesuaikan semua peringkat (termasuk penantang utama) sehingga rata-rata peringkat seluruh kumpulan tepat 1000.
-4.  **Hasil**: Menampilkan tabel estimasi peringkat Elo, skor efektif, dan perbedaan relatif.
+2.  **Selisih Elo**: Mengubah skor efektif menjadi selisih poin Elo.
+3.  **Normalisasi**: Menyesuaikan peringkat sehingga rata-rata adalah 1000.
+
+### Elo -> Tingkat Menang
+Mengambil daftar kompetitor dan peringkat Elo mereka yang diketahui.
+1.  **Skor Harapan**: Menghitung tingkat kemenangan yang diharapkan untuk setiap pertandingan berdasarkan selisih Elo.
+2.  **Normalisasi (Opsional)**: Dapat menormalisasi peringkat ke rata-rata 1000.
+3.  **Sorotan Rata-rata**: Menyoroti kompetitor yang paling dekat dengan peringkat rata-rata.
+
+Dalam kedua mode, Anda dapat **mengklik baris mana pun di hasil** untuk menetapkan kompetitor tersebut sebagai acuan. Ini menghitung ulang selisih Elo relatif dan tingkat kemenangan yang diharapkan terhadap acuan baru.
 
 ## Mulai Cepat
 1.  Unduh `EloCalc.html`.
-2.  Buka di peramban modern apa pun (Chrome, Edge, Firefox, Safari).
-3.  Masukkan nama Penantang Utama (mis., "Tim Saya").
-4.  Tambahkan kompetitor dan masukkan tingkat kemenangan mereka melawan Penantang Utama.
-5.  Aktifkan "Sertakan Tingkat Seri" jika hasil imbang dimungkinkan.
-6.  Klik "Hitung Peringkat".
-7.  Lihat peringkat Elo yang dinormalisasi dan ekspor ke CSV jika diperlukan.
+2.  Buka di peramban modern apa pun.
+3.  Pilih **Mode** Anda (Tingkat Menang -> Elo atau Elo -> Tingkat Menang).
+4.  Masukkan data kompetitor (Nama dan Tingkat Menang/Elo).
+5.  Klik "Hitung".
+6.  Klik baris dalam tabel hasil untuk membandingkan secara dinamis dengan kompetitor yang berbeda.
 
 ## Fitur Utama
+-   **Mode Ganda**: Konversi Tingkat Menang ke Elo, atau Elo ke Tingkat Menang.
+-   **Perbandingan Acuan**: Klik baris mana pun untuk melihat statistik relatif terhadap kompetitor tersebut.
 -   **Dukungan Multi-bahasa**: Beralih antara Bahasa Inggris dan Bahasa Indonesia.
 -   **Tema Gelap/Terang**: Pilihan tema otomatis atau manual.
--   **Dukungan Seri**: Input opsional untuk tingkat seri/imbang (dihitung sebagai setengah kemenangan).
+-   **Dukungan Seri**: Input opsional untuk tingkat seri/imbang (mode Tingkat Menang).
+-   **Normalisasi Elo**: Opsi untuk menormalisasi peringkat Elo ke 1000 (mode Elo).
 -   **Input Dinamis**: Tambah, hapus, atau bersihkan kompetitor dengan mudah.
 -   **Impor/Ekspor CSV**: Impor data pertandingan dari file teks dan unduh hasilnya.
 -   **File HTML tunggal**: Tidak ada instalasi, tidak ada ketergantungan, bekerja sepenuhnya offline.

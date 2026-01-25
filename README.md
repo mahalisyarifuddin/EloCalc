@@ -9,26 +9,37 @@ EloCalc is a single-file, browser-based tool for converting simple win rates int
 The interface supports both **English** and **Bahasa Indonesia**.
 
 ## How It Works
-The calculator takes a main contender and a list of opponents with their respective win rates against the main contender, then:
+The calculator operates in two modes:
 
+### Win Rate -> Elo
+Takes a main contender and a list of opponents with their respective win rates against the main contender.
 1.  **Effective Score**: Calculates the effective win probability (Win % + 0.5 * Tie %).
-2.  **Elo Difference**: Converts the effective score into an Elo point difference using the standard logistic distribution formula (400-point rule).
-3.  **Normalization**: Adjusts all ratings (including the main contender) so that the average rating of the entire pool is exactly 1000.
-4.  **Results**: Displays a table of estimated Elo ratings, effective scores, and relative differences.
+2.  **Elo Difference**: Converts the effective score into an Elo point difference.
+3.  **Normalization**: Adjusts ratings so the average is 1000.
+
+### Elo -> Win Rate
+Takes a list of competitors and their known Elo ratings.
+1.  **Expected Score**: Calculates the expected win rate for each matchup based on Elo difference.
+2.  **Normalization (Optional)**: Can normalize ratings to average 1000.
+3.  **Average Highlight**: Highlights the competitor closest to the average rating.
+
+In both modes, you can **click any row in the results** to set that competitor as the baseline. This recalculates relative Elo differences and expected win rates against the new baseline.
 
 ## Quick Start
 1.  Download `EloCalc.html`.
-2.  Open it in any modern browser (Chrome, Edge, Firefox, Safari).
-3.  Enter the name of your Main Contender (e.g., "My Team").
-4.  Add competitors and input their win rate against the Main Contender.
-5.  Enable "Include Tie Rates" if draws are possible.
-6.  Click "Calculate Ratings".
-7.  View the normalized Elo ratings and export to CSV if needed.
+2.  Open it in any modern browser.
+3.  Select your **Mode** (Win Rate -> Elo or Elo -> Win Rate).
+4.  Enter competitor data (Names and Win Rates/Elo).
+5.  Click "Calculate".
+6.  Click rows in the result table to dynamically compare against different competitors.
 
 ## Key Features
+-   **Dual Modes**: Convert Win Rates to Elo, or Elo to Win Rates.
+-   **Baseline Comparison**: Click any row to see relative stats against that competitor.
 -   **Multi-language Support**: Toggle between English and Indonesian.
 -   **Dark/Light Theme**: Automatic or manual theme selection.
--   **Tie Support**: Optional input for tie/draw rates (counting as half a win).
+-   **Tie Support**: Optional input for tie/draw rates (Win Rate mode).
+-   **Elo Normalization**: Option to normalize Elo ratings to 1000 (Elo mode).
 -   **Dynamic Input**: Add, remove, or clear competitors easily.
 -   **CSV Import/Export**: Import match data from text files and download results.
 -   **Single HTML file**: No installation, no dependencies, works completely offline.
