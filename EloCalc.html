@@ -267,6 +267,24 @@
 				position: sticky;
 				top: 0;
 				z-index: 5;
+				cursor: pointer;
+				user-select: none;
+			}
+			th:hover {
+				background: var(--hover);
+			}
+			th::after {
+				content: '';
+				display: inline-block;
+				margin-left: 5px;
+				width: 0.8em;
+				opacity: 0.7;
+			}
+			th.sort-asc::after {
+				content: '▲';
+			}
+			th.sort-desc::after {
+				content: '▼';
 			}
 			@media(max-width: 768px) {
 				.selectors {
@@ -529,11 +547,13 @@
 					this.allowTies = true;
 					this.normalizeElo = false;
 					this.mode = 'win';
+					this.sortState = { field: 'eloRating', dir: -1 };
 					this.setup();
 					this.theme('auto');
 					this.lang(navigator.language?.startsWith('id') ? 'id' : 'en');
 					this.setMode('win');
 					window.setBaseline = (id) => this.setBaseline(id);
+					window.sortResults = (field) => this.sortResults(field);
 				}
 				setup() {
 					const handlers = {
@@ -863,6 +883,7 @@
 						baselineId: this.data?.baselineId && allRaw.find(r => r.id === this.data.baselineId) ? this.data.baselineId : baselineId,
 						closestId
 					};
+					this.sortState = { field: 'eloRating', dir: -1 };
 
 					this.renderResults();
 					this.display('results');
@@ -910,24 +931,48 @@
 					tieInput.classList.toggle('invalid', invalid && this.allowTies);
 				}
 
+				sortResults(field) {
+					if (this.sortState.field === field) {
+						this.sortState.dir *= -1;
+					} else {
+						this.sortState.field = field;
+						this.sortState.dir = field === 'name' ? 1 : -1;
+					}
+					this.renderResults();
+				}
+
 				renderResults() {
 					if (this.data) {
 						const { results, baselineId } = this.data;
 						const baselineComp = results.find(r => r.id === baselineId) || results[0];
 
-						const calculatedResults = results.map(r => {
+						let calculatedResults = results.map((r, i) => {
 							const eloDiff = r.eloRating - baselineComp.eloRating;
 							const effectiveScore = 1 / (1 + Math.pow(10, -eloDiff / 400));
 
 							return {
 								...r,
+								rank: i + 1,
 								eloDiff,
 								effectiveScore,
 								displayWinRate: this.mode === 'win' ? r.winRate : effectiveScore * 100
 							};
 						});
 
+						const { field, dir } = this.sortState;
+						calculatedResults.sort((a, b) => {
+							const valA = a[field];
+							const valB = b[field];
+							if (typeof valA === 'string') return dir * valA.localeCompare(valB);
+							return dir * (valA - valB);
+						});
+
 						const maxElo = Math.max(...results.map(r => r.eloRating), 1);
+						const th = (key, label) => {
+							const active = this.sortState.field === key;
+							const cls = active ? (this.sortState.dir === 1 ? 'sort-asc' : 'sort-desc') : '';
+							return `<th class="${cls}" onclick="window.sortResults('${key}')">${label}</th>`;
+						};
 
 						elements.resultsTable.innerHTML = `
 							<h2>${this.string('resultsTitle')}</h2>
@@ -936,14 +981,14 @@
 								<table>
 									<thead>
 										<tr>
-											<th>${this.string('rank')}</th>
-											<th>${this.string('name')}</th>
-											<th>${this.string('winRate')}</th>
-											${this.mode === 'win' ? `<th>${this.string('tieRate')}</th>` : ''}
-											<th>${this.string('effectiveScore')}</th>
-											<th>${this.string('eloRating')}</th>
-											<th>${this.string('relativeStrength')}</th>
-											<th>${this.string('eloDifference')}</th>
+											${th('eloRating', this.string('rank'))}
+											${th('name', this.string('name'))}
+											${th('displayWinRate', this.string('winRate'))}
+											${this.mode === 'win' ? th('tieRate', this.string('tieRate')) : ''}
+											${th('effectiveScore', this.string('effectiveScore'))}
+											${th('eloRating', this.string('eloRating'))}
+											${th('eloRating', this.string('relativeStrength'))}
+											${th('eloDiff', this.string('eloDifference'))}
 										</tr>
 									</thead>
 									<tbody>
@@ -951,7 +996,7 @@
 											const isBaseline = result.id === baselineId;
 											const isClosest = result.id === this.data.closestId && this.mode === 'elo';
 											return `<tr class="${isBaseline ? 'highlight' : ''} ${isClosest ? 'avg-highlight' : ''}" style="cursor: pointer" onclick="window.setBaseline('${result.id}')">
-												<td>${i + 1}</td>
+												<td>${result.rank}</td>
 												<td><strong>${escape(result.name)}</strong>${isClosest ? ' <span title="Closest to Average">~</span>' : ''}</td>
 												<td>${this.format(result.displayWinRate, { maximumFractionDigits: 1 })}%</td>
 												${this.mode === 'win' ? `<td>${this.format(result.tieRate || 0, { maximumFractionDigits: 1 })}%</td>` : ''}
