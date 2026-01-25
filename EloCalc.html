@@ -146,8 +146,11 @@
 			.mode-elo #headTie,
 			.mode-elo #allowTies,
 			.mode-elo #allowTiesLabel,
-			.mode-elo .options-row,
 			.mode-elo .group {
+				display: none !important;
+			}
+			.mode-win #normalizeElo,
+			.mode-win #normalizeEloLabel {
 				display: none !important;
 			}
 			.mode-win .elo-input,
@@ -236,6 +239,10 @@
 			}
 			.highlight {
 				background-color: var(--highlight-bg);
+			}
+			.avg-highlight {
+				outline: 2px dashed var(--primary);
+				outline-offset: -2px;
 			}
 			input:out-of-range {
 				border-color: var(--danger);
@@ -340,6 +347,8 @@
 				<div class="row options-row">
 					<input type="checkbox" id="allowTies">
 					<label for="allowTies" id="allowTiesLabel"></label>
+					<input type="checkbox" id="normalizeElo">
+					<label for="normalizeElo" id="normalizeEloLabel"></label>
 				</div>
 				<h3 id="competitorsHeader"></h3>
 				<div id="listHeaders" class="competitor-row">
@@ -378,6 +387,7 @@
 					darkTheme: 'Dark',
 					mainLabel: 'Main Contender',
 					allowTiesLabel: 'Include Tie Rates',
+					normalizeEloLabel: 'Normalize to 1000',
 					competitorsHeader: 'Competitors',
 					add: '+ Add Competitor',
 					calculate: 'Calculate',
@@ -420,6 +430,7 @@
 					darkTheme: 'Gelap',
 					mainLabel: 'Pesaing Utama',
 					allowTiesLabel: 'Sertakan Tingkat Seri',
+					normalizeEloLabel: 'Normalisasi ke 1000',
 					competitorsHeader: 'Kompetitor',
 					add: '+ Tambah Kompetitor',
 					calculate: 'Hitung',
@@ -516,6 +527,7 @@
 					this.nextIndex = 4;
 					this.data = null;
 					this.allowTies = true;
+					this.normalizeElo = false;
 					this.mode = 'win';
 					this.setup();
 					this.theme('auto');
@@ -551,6 +563,11 @@
 						document.querySelectorAll('.competitor-row').forEach(row => this.validateRow(row));
 					};
 					elements.allowTies.checked = this.allowTies;
+					elements.normalizeElo.onchange = event => {
+						this.normalizeElo = event.target.checked;
+						this.calculate();
+					};
+					elements.normalizeElo.checked = this.normalizeElo;
 					document.onkeydown = event => this.key(event);
 					elements.list.onclick = event => {
 						const row = event.target.closest('.competitor-row');
@@ -801,11 +818,12 @@
 				performCalculation(mainName) {
 					let allRaw = [];
 					let baselineId = 'main';
+					let avgElo = 0;
 
 					if (this.mode === 'win') {
 						const rawResults = this.competitors.map(comp => this.calculateRow(comp));
 						allRaw = [{ name: mainName, rawElo: 0, isMain: true, id: 'main', winRate: 50, tieRate: 0 }, ...rawResults];
-						const avgElo = allRaw.reduce((sum, r) => sum + r.rawElo, 0) / allRaw.length;
+						avgElo = allRaw.reduce((sum, r) => sum + r.rawElo, 0) / allRaw.length;
 						const adjustment = 1000 - avgElo;
 						allRaw.forEach(r => r.eloRating = r.rawElo + adjustment);
 					} else {
@@ -815,18 +833,35 @@
 							id: c.id
 						}));
 						if (allRaw.length > 0) {
-							// Sort first to find the top Elo as default baseline? Or just use the first?
-							// Let's use the first one in the list as default if not sorted.
-							// Actually, let's just pick the one with the highest Elo as default baseline for display?
-							// Or just the first one. Let's stick to the first one for stability.
+							avgElo = allRaw.reduce((sum, r) => sum + r.eloRating, 0) / allRaw.length;
+							if (this.normalizeElo) {
+								const adjustment = 1000 - avgElo;
+								allRaw.forEach(r => r.eloRating += adjustment);
+								avgElo = 1000;
+							}
 							baselineId = allRaw[0].id;
 						}
 					}
 
+					// Find row closest to average
+					let closestId = null;
+					let minDiff = Infinity;
+					// Use target average (1000 for win mode or normalized elo, calculated avg for raw elo)
+					const targetAvg = (this.mode === 'win' || this.normalizeElo) ? 1000 : avgElo;
+
+					allRaw.forEach(r => {
+						const diff = Math.abs(r.eloRating - targetAvg);
+						if (diff < minDiff) {
+							minDiff = diff;
+							closestId = r.id;
+						}
+					});
+
 					this.data = {
 						results: allRaw.sort((a, b) => b.eloRating - a.eloRating),
 						allowTies: this.allowTies,
-						baselineId: this.data?.baselineId && allRaw.find(r => r.id === this.data.baselineId) ? this.data.baselineId : baselineId
+						baselineId: this.data?.baselineId && allRaw.find(r => r.id === this.data.baselineId) ? this.data.baselineId : baselineId,
+						closestId
 					};
 
 					this.renderResults();
@@ -914,9 +949,10 @@
 									<tbody>
 										${calculatedResults.map((result, i) => {
 											const isBaseline = result.id === baselineId;
-											return `<tr class="${isBaseline ? 'highlight' : ''}" style="cursor: pointer" onclick="window.setBaseline('${result.id}')">
+											const isClosest = result.id === this.data.closestId && this.mode === 'elo';
+											return `<tr class="${isBaseline ? 'highlight' : ''} ${isClosest ? 'avg-highlight' : ''}" style="cursor: pointer" onclick="window.setBaseline('${result.id}')">
 												<td>${i + 1}</td>
-												<td><strong>${escape(result.name)}</strong></td>
+												<td><strong>${escape(result.name)}</strong>${isClosest ? ' <span title="Closest to Average">~</span>' : ''}</td>
 												<td>${this.format(result.displayWinRate, { maximumFractionDigits: 1 })}%</td>
 												${this.mode === 'win' ? `<td>${this.format(result.tieRate || 0, { maximumFractionDigits: 1 })}%</td>` : ''}
 												<td>${this.format(result.effectiveScore * 100, { maximumFractionDigits: 1 })}%</td>
