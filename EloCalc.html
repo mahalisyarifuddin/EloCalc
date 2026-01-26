@@ -552,8 +552,6 @@
 					this.theme('auto');
 					this.lang(navigator.language?.startsWith('id') ? 'id' : 'en');
 					this.setMode('win');
-					window.setBaseline = (id) => this.setBaseline(id);
-					window.sortResults = (field) => this.sortResults(field);
 				}
 				setup() {
 					const handlers = {
@@ -589,6 +587,8 @@
 					};
 					elements.normalizeElo.checked = this.normalizeElo;
 					document.onkeydown = event => this.key(event);
+					elements.resultsTable.addEventListener('click', event => this.handleTableClick(event));
+					elements.resultsTable.addEventListener('keydown', event => this.handleTableKey(event));
 					elements.list.onclick = event => {
 						const row = event.target.closest('.competitor-row');
 						if (event.target.matches('.danger') && row) {
@@ -623,6 +623,34 @@
 						} else {
 							elements.add.focus();
 						}
+					}
+				}
+
+				handleTableClick(event) {
+					const th = event.target.closest('th[data-sort]');
+					if (th) {
+						this.sortResults(th.dataset.sort);
+						return;
+					}
+					const tr = event.target.closest('tr[data-id]');
+					if (tr) {
+						this.setBaseline(tr.dataset.id);
+					}
+				}
+
+				handleTableKey(event) {
+					if (event.key !== 'Enter' && event.key !== ' ') return;
+
+					const th = event.target.closest('th[data-sort]');
+					if (th) {
+						event.preventDefault();
+						this.sortResults(th.dataset.sort);
+						return;
+					}
+					const tr = event.target.closest('tr[data-id]');
+					if (tr) {
+						event.preventDefault();
+						this.setBaseline(tr.dataset.id);
 					}
 				}
 
@@ -971,8 +999,13 @@
 						const th = (key, label) => {
 							const active = this.sortState.field === key;
 							const cls = active ? (this.sortState.dir === 1 ? 'sort-asc' : 'sort-desc') : '';
-							return `<th class="${cls}" onclick="window.sortResults('${key}')">${label}</th>`;
+							const ariaSort = active ? (this.sortState.dir === 1 ? 'ascending' : 'descending') : 'none';
+							return `<th class="${cls}" data-sort="${key}" tabindex="0" role="columnheader" aria-sort="${ariaSort}">${label}</th>`;
 						};
+
+						const activeEl = document.activeElement;
+						const savedSort = activeEl ? activeEl.dataset.sort : null;
+						const savedId = activeEl ? activeEl.dataset.id : null;
 
 						elements.resultsTable.innerHTML = `
 							<h2>${this.string('resultsTitle')}</h2>
@@ -995,7 +1028,7 @@
 										${calculatedResults.map((result, i) => {
 											const isBaseline = result.id === baselineId;
 											const isClosest = result.id === this.data.closestId && this.mode === 'elo';
-											return `<tr class="${isBaseline ? 'highlight' : ''} ${isClosest ? 'avg-highlight' : ''}" style="cursor: pointer" onclick="window.setBaseline('${result.id}')">
+											return `<tr class="${isBaseline ? 'highlight' : ''} ${isClosest ? 'avg-highlight' : ''}" style="cursor: pointer" data-id="${result.id}" tabindex="0" aria-selected="${isBaseline}">
 												<td>${result.rank}</td>
 												<td><strong>${escape(result.name)}</strong>${isClosest ? ' <span title="Closest to Average">~</span>' : ''}</td>
 												<td>${this.format(result.displayWinRate, { maximumFractionDigits: 1 })}%</td>
@@ -1009,6 +1042,12 @@
 									</tbody>
 								</table>
 							</div>`;
+
+						if (savedSort) {
+							elements.resultsTable.querySelector(`th[data-sort="${savedSort}"]`)?.focus();
+						} else if (savedId) {
+							elements.resultsTable.querySelector(`tr[data-id="${savedId}"]`)?.focus();
+						}
 					}
 				}
 
