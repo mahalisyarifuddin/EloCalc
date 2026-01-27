@@ -934,6 +934,12 @@
 					};
 				}
 
+				calculateRowStats(result, baselineComp) {
+					const eloDiff = result.eloRating - baselineComp.eloRating;
+					const effectiveScore = 1 / (1 + Math.pow(10, -eloDiff / 400));
+					return { eloDiff, effectiveScore };
+				}
+
 				isInvalid(comp) {
 					if (this.mode === 'elo') return false;
 					const tieRate = this.allowTies ? +comp.tieRate : 0;
@@ -975,8 +981,7 @@
 						const baselineComp = results.find(r => r.id === baselineId) || results[0];
 
 						let calculatedResults = results.map((r, i) => {
-							const eloDiff = r.eloRating - baselineComp.eloRating;
-							const effectiveScore = 1 / (1 + Math.pow(10, -eloDiff / 400));
+							const { eloDiff, effectiveScore } = this.calculateRowStats(r, baselineComp);
 
 							return {
 								...r,
@@ -1058,67 +1063,52 @@
 					}
 				}
 
+				generateTableText(separator) {
+					if (!this.data) return null;
+					const { results, baselineId } = this.data;
+					const baselineComp = results.find(r => r.id === baselineId) || results[0];
+					const headers = [
+						this.string('rank'),
+						this.string('name'),
+						this.string('winRate'),
+						...(this.mode === 'win' ? [this.string('tieRate')] : []),
+						this.string('effectiveScore'),
+						this.string('eloRating'),
+						this.string('eloDifference')
+					].join(separator);
+
+					const escape = val => {
+						const str = String(val);
+						if (str.includes(separator) || str.includes('"') || str.includes('\n')) {
+							return `"${str.replace(/"/g, '""')}"`;
+						}
+						return str;
+					};
+
+					return headers + '\n' + results.map((result, i) => {
+						const { eloDiff, effectiveScore } = this.calculateRowStats(result, baselineComp);
+						const displayWinRate = this.mode === 'win' ? (result.winRate || 0) : (effectiveScore * 100);
+						return [
+							i + 1,
+							result.name,
+							this.format(displayWinRate, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+							...(this.mode === 'win' ? [result.tieRate || 0] : []),
+							this.format(effectiveScore * 100, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+							Math.round(result.eloRating),
+							Math.round(eloDiff)
+						].map(escape).join(separator);
+					}).join('\n');
+				}
+
 				export() {
-					if (this.data) {
-						const { results, baselineId } = this.data;
-						const baselineComp = results.find(r => r.id === baselineId) || results[0];
-						const headers = [
-							this.string('rank'),
-							this.string('name'),
-							this.string('winRate'),
-							...(this.mode === 'win' ? [this.string('tieRate')] : []),
-							this.string('effectiveScore'),
-							this.string('eloRating'),
-							this.string('eloDifference')
-						].join(',');
-
-						const csv = headers + '\n' + results.map((result, i) => {
-							const eloDiff = result.eloRating - baselineComp.eloRating;
-							const effectiveScore = 1 / (1 + Math.pow(10, -eloDiff / 400));
-							const displayWinRate = this.mode === 'win' ? (result.winRate || 0) : (effectiveScore * 100);
-							return [
-								i + 1,
-								`"${result.name.replace(/"/g, '""')}"`,
-								this.format(displayWinRate, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
-								...(this.mode === 'win' ? [result.tieRate || 0] : []),
-								this.format(effectiveScore * 100, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
-								Math.round(result.eloRating),
-								Math.round(eloDiff)
-							].join(',');
-						}).join('\n');
-
+					const csv = this.generateTableText(',');
+					if (csv) {
 						Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv], { type: 'text/csv' })), download: `elo_ratings_${new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-')}.csv` }).click();
 					}
 				}
 				copy() {
-					if (this.data) {
-						const { results, baselineId } = this.data;
-						const baselineComp = results.find(r => r.id === baselineId) || results[0];
-						const headers = [
-							this.string('rank'),
-							this.string('name'),
-							this.string('winRate'),
-							...(this.mode === 'win' ? [this.string('tieRate')] : []),
-							this.string('effectiveScore'),
-							this.string('eloRating'),
-							this.string('eloDifference')
-						].join('\t');
-
-						const tsv = headers + '\n' + results.map((result, i) => {
-							const eloDiff = result.eloRating - baselineComp.eloRating;
-							const effectiveScore = 1 / (1 + Math.pow(10, -eloDiff / 400));
-							const displayWinRate = this.mode === 'win' ? (result.winRate || 0) : (effectiveScore * 100);
-							return [
-								i + 1,
-								`"${result.name.replace(/"/g, '""')}"`,
-								this.format(displayWinRate, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
-								...(this.mode === 'win' ? [result.tieRate || 0] : []),
-								this.format(effectiveScore * 100, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
-								Math.round(result.eloRating),
-								Math.round(eloDiff)
-							].join('\t');
-						}).join('\n');
-
+					const tsv = this.generateTableText('\t');
+					if (tsv) {
 						navigator.clipboard.writeText(tsv).then(() => {
 							const originalText = elements.copy.textContent;
 							elements.copy.textContent = this.string('copySuccess');
