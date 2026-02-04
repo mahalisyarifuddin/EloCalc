@@ -146,6 +146,9 @@
 		.mode-win #normalizeElo, .mode-win #normalizeEloLabel { 
 			display: none !important; 
 		}
+		.mode-elo #anchorMain, .mode-elo #anchorMainLabel {
+			display: none !important;
+		}
 		.mode-win .elo-input, .mode-win #mainElo, .mode-win #headElo { 
 			display: none !important; 
 		}
@@ -339,6 +342,8 @@
 			<div class="row options-row">
 				<input type="checkbox" id="allowTies">
 				<label for="allowTies" id="allowTiesLabel"></label>
+				<input type="checkbox" id="anchorMain">
+				<label for="anchorMain" id="anchorMainLabel"></label>
 				<input type="checkbox" id="normalizeElo">
 				<label for="normalizeElo" id="normalizeEloLabel"></label>
 			</div>
@@ -379,6 +384,7 @@
 				darkTheme: 'Dark',
 				mainLabel: 'Main Contender',
 				allowTiesLabel: 'Include Tie Rates',
+				anchorMainLabel: 'Anchor Main to 1000',
 				normalizeEloLabel: 'Normalize to 1000',
 				competitorsHeader: 'Competitors',
 				add: '+ Add Competitor',
@@ -422,6 +428,7 @@
 				darkTheme: 'Gelap',
 				mainLabel: 'Pesaing Utama',
 				allowTiesLabel: 'Sertakan Tingkat Seri',
+				anchorMainLabel: 'Tetapkan Utama ke 1000',
 				normalizeEloLabel: 'Normalisasi ke 1000',
 				competitorsHeader: 'Kompetitor',
 				add: '+ Tambah Kompetitor',
@@ -507,6 +514,7 @@
 				this.nextIndex = 4;
 				this.data = null;
 				this.allowTies = true;
+				this.anchorMain = false;
 				this.normalizeElo = false;
 				this.mode = 'win';
 				this.sortState = { field: 'eloRating', direction: -1 };
@@ -543,6 +551,8 @@
 					document.querySelectorAll('.competitor-row').forEach(row => this.validateRow(row));
 				};
 				elements.allowTies.checked = this.allowTies;
+				elements.anchorMain.onchange = event => { this.anchorMain = event.target.checked; this.calculate(); };
+				elements.anchorMain.checked = this.anchorMain;
 				elements.normalizeElo.onchange = event => { this.normalizeElo = event.target.checked; this.calculate(); };
 				elements.normalizeElo.checked = this.normalizeElo;
 				document.onkeydown = event => this.key(event);
@@ -779,8 +789,15 @@
 				if (this.mode === 'win') {
 					const rawResults = this.competitors.map(competitor => this.calculateRow(competitor));
 					allResults = [{ name: mainName, rawElo: 0, isMain: true, id: 'main', winRate: 50, tieRate: 0 }, ...rawResults];
-					averageElo = allResults.reduce((sum, result) => sum + result.rawElo, 0) / allResults.length;
-					const adjustment = 1000 - averageElo;
+					const rawAverage = allResults.reduce((sum, result) => sum + result.rawElo, 0) / allResults.length;
+					let adjustment;
+					if (this.anchorMain) {
+						adjustment = 1000;
+						averageElo = rawAverage + 1000;
+					} else {
+						adjustment = 1000 - rawAverage;
+						averageElo = 1000;
+					}
 					allResults.forEach(result => result.eloRating = result.rawElo + adjustment);
 				} else {
 					allResults = this.competitors.map(c => ({ name: c.name.trim() || `Competitor ${c.id}`, eloRating: parseFloat(c.elo) || 0, id: c.id }));
@@ -795,7 +812,7 @@
 					}
 				}
 
-				const targetAverage = (this.mode === 'win' || this.normalizeElo) ? 1000 : averageElo;
+				const targetAverage = averageElo;
 				let closestId = null;
 				let minDifference = Infinity;
 

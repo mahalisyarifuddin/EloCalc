@@ -15,7 +15,7 @@ Kalkulator beroperasi dalam dua mode:
 Mengambil penantang utama dan daftar lawan dengan tingkat kemenangan masing-masing.
 1.  **Skor Efektif**: Menghitung probabilitas kemenangan efektif (Menang % + 0.5 * Seri %).
 2.  **Selisih Elo**: Mengubah skor efektif menjadi selisih poin Elo.
-3.  **Normalisasi**: Menyesuaikan peringkat sehingga rata-rata adalah 1000.
+3.  **Normalisasi**: Menyesuaikan peringkat sehingga rata-rata adalah 1000, atau menetapkan penantang utama ke 1000.
 
 ### Elo -> Tingkat Menang
 Mengambil daftar kompetitor dan peringkat Elo mereka yang diketahui.
@@ -39,6 +39,7 @@ Dalam kedua mode, Anda dapat **mengklik baris mana pun di hasil** untuk menetapk
 -   **Dukungan Multi-bahasa**: Beralih antara Bahasa Inggris dan Bahasa Indonesia.
 -   **Tema Gelap/Terang**: Pilihan tema otomatis atau manual.
 -   **Dukungan Seri**: Input opsional untuk tingkat seri/imbang (mode Tingkat Menang).
+-   **Penetapan Elo**: Opsi untuk menetapkan penantang utama ke 1000 Elo (mode Tingkat Menang).
 -   **Normalisasi Elo**: Opsi untuk menormalisasi peringkat Elo ke 1000 (mode Elo).
 -   **Input Dinamis**: Tambah, hapus, atau bersihkan kompetitor dengan mudah.
 -   **Impor/Ekspor CSV**: Impor data pertandingan dari file teks dan unduh hasilnya.

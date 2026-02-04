@@ -15,7 +15,7 @@ The calculator operates in two modes:
 Takes a main contender and a list of opponents with their respective win rates against the main contender.
 1.  **Effective Score**: Calculates the effective win probability (Win % + 0.5 * Tie %).
 2.  **Elo Difference**: Converts the effective score into an Elo point difference.
-3.  **Normalization**: Adjusts ratings so the average is 1000.
+3.  **Normalization**: Adjusts ratings so the average is 1000, or anchors the main contender to 1000.
 
 ### Elo -> Win Rate
 Takes a list of competitors and their known Elo ratings.
@@ -39,6 +39,7 @@ In both modes, you can **click any row in the results** to set that competitor a
 -   **Multi-language Support**: Toggle between English and Indonesian.
 -   **Dark/Light Theme**: Automatic or manual theme selection.
 -   **Tie Support**: Optional input for tie/draw rates (Win Rate mode).
+-   **Elo Anchoring**: Option to anchor the main contender to 1000 Elo (Win Rate mode).
 -   **Elo Normalization**: Option to normalize Elo ratings to 1000 (Elo mode).
 -   **Dynamic Input**: Add, remove, or clear competitors easily.
 -   **CSV Import/Export**: Import match data from text files and download results.
