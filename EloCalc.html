@@ -911,6 +911,8 @@
 					return direction * (valueA - valueB);
 				});
 
+				this.sortedResults = calculatedResults;
+
 				const maxElo = Math.max(...results.map(r => r.eloRating), 1);
 				const header = (key, label) => {
 					const active = this.sortState.field === key;
@@ -971,9 +973,9 @@
 			}
 
 			generateTableText(separator) {
-				if (!this.data) return null;
-				const { results, baselineId } = this.data;
-				const baselineCompetitor = results.find(r => r.id === baselineId) || results[0];
+				if (!this.sortedResults) return null;
+				const results = this.sortedResults;
+
 				const headers = [
 					this.string('rank'),
 					this.string('name'),
@@ -990,21 +992,15 @@
 					return stringValue;
 				};
 
-				let currentRank = 1;
-				return headers + '\n' + results.map((result, index) => {
-					const { eloDifference, effectiveScore } = this.calculateRowStats(result, baselineCompetitor);
-					const displayWinRate = this.mode === 'win' ? (result.winRate || 0) : (effectiveScore * 100);
-					if (index === 0 || Math.round(result.eloRating) !== Math.round(results[index - 1].eloRating)) {
-						currentRank = index + 1;
-					}
+				return headers + '\n' + results.map(result => {
 					return [
-						currentRank,
+						result.rank,
 						result.name,
-						this.format(displayWinRate, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+						this.format(result.displayWinRate, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
 						...(this.mode === 'win' ? [result.tieRate || 0] : []),
-						this.format(effectiveScore * 100, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+						this.format(result.effectiveScore * 100, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
 						Math.round(result.eloRating),
-						Math.round(eloDifference)
+						Math.round(result.eloDifference)
 					].map(escapeValue).join(separator);
 				}).join('\n');
 			}
