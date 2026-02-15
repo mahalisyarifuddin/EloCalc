@@ -828,8 +828,30 @@
 					closestId
 				};
 				this.sortState = { field: 'eloRating', direction: -1 };
+				this.updateRelativeStats();
 				this.renderResults();
 				this.display('results');
+			}
+
+			updateRelativeStats() {
+				if (!this.data) return;
+				const { results, baselineId } = this.data;
+				const baselineCompetitor = results.find(r => r.id === baselineId) || results[0];
+
+				let currentRank = 1;
+				this.processedResults = results.map((result, index) => {
+					const { eloDifference, effectiveScore } = this.calculateRowStats(result, baselineCompetitor);
+					if (index === 0 || Math.round(result.eloRating) !== Math.round(results[index - 1].eloRating)) {
+						currentRank = index + 1;
+					}
+					return {
+						...result,
+						rank: currentRank,
+						eloDifference,
+						effectiveScore,
+						displayWinRate: this.mode === 'win' ? result.winRate : effectiveScore * 100
+					};
+				});
 			}
 
 			calculateRow(competitor) {
@@ -884,36 +906,21 @@
 			}
 
 			renderResults() {
-				if (!this.data) return;
-				const { results, baselineId } = this.data;
-				const baselineCompetitor = results.find(r => r.id === baselineId) || results[0];
-
-				let currentRank = 1;
-				let calculatedResults = results.map((result, index) => {
-					const { eloDifference, effectiveScore } = this.calculateRowStats(result, baselineCompetitor);
-					if (index === 0 || Math.round(result.eloRating) !== Math.round(results[index - 1].eloRating)) {
-						currentRank = index + 1;
-					}
-					return {
-						...result,
-						rank: currentRank,
-						eloDifference,
-						effectiveScore,
-						displayWinRate: this.mode === 'win' ? result.winRate : effectiveScore * 100
-					};
-				});
+				if (!this.processedResults) return;
+				const { baselineId } = this.data;
+				const maxElo = Math.max(...this.data.results.map(r => r.eloRating), 1);
 
 				const { field, direction } = this.sortState;
-				calculatedResults.sort((a, b) => {
+				// Create a shallow copy to sort
+				const sortedResults = [...this.processedResults].sort((a, b) => {
 					const valueA = a[field];
 					const valueB = b[field];
 					if (typeof valueA === 'string') return direction * valueA.localeCompare(valueB);
 					return direction * (valueA - valueB);
 				});
 
-				this.sortedResults = calculatedResults;
+				this.sortedResults = sortedResults;
 
-				const maxElo = Math.max(...results.map(r => r.eloRating), 1);
 				const header = (key, label) => {
 					const active = this.sortState.field === key;
 					const className = active ? (this.sortState.direction === 1 ? 'sort-asc' : 'sort-desc') : '';
@@ -943,7 +950,7 @@
 								</tr>
 							</thead>
 							<tbody>
-								${calculatedResults.map((result, index) => {
+								${sortedResults.map((result, index) => {
 									const isBaseline = result.id === baselineId;
 									const isClosest = result.id === this.data.closestId && this.mode === 'elo';
 									return `<tr class="${isBaseline ? 'highlight' : ''} ${isClosest ? 'avg-highlight' : ''}" style="cursor: pointer" data-id="${result.id}" tabindex="0" aria-selected="${isBaseline}">
@@ -968,6 +975,7 @@
 			setBaseline(id) {
 				if (this.data) {
 					this.data.baselineId = isNaN(id) ? id : +id;
+					this.updateRelativeStats();
 					this.renderResults();
 				}
 			}
