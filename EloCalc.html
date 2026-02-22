@@ -943,7 +943,7 @@
 									${header('name', this.string('name'))}
 									${header('displayWinRate', this.string('winRate'))}
 									${this.mode === 'win' ? header('tieRate', this.string('tieRate')) : ''}
-									${header('effectiveScore', this.string('effectiveScore'))}
+									${this.mode === 'win' ? header('effectiveScore', this.string('effectiveScore')) : ''}
 									${header('eloRating', this.string('eloRating'))}
 									${header('eloRating', this.string('relativeStrength'))}
 									${header('eloDifference', this.string('eloDifference'))}
@@ -958,7 +958,7 @@
 										<td><strong>${escape(result.name)}</strong>${isClosest ? ' <span title="Closest to Average">~</span>' : ''}</td>
 										<td>${this.format(result.displayWinRate, { maximumFractionDigits: 1 })}%</td>
 										${this.mode === 'win' ? `<td>${this.format(result.tieRate || 0, { maximumFractionDigits: 1 })}%</td>` : ''}
-										<td>${this.format(result.effectiveScore * 100, { maximumFractionDigits: 1 })}%</td>
+										${this.mode === 'win' ? `<td>${this.format(result.effectiveScore * 100, { maximumFractionDigits: 1 })}%</td>` : ''}
 										<td><strong>${Math.round(result.eloRating)}</strong></td>
 										<td><div class="bar-container" title="${Math.round(result.eloRating)}" aria-hidden="true"><div class="bar" style="width:${Math.max(0, result.eloRating / maxElo * 100)}%"></div></div></td>
 										<td>${result.eloDifference > 0 ? '+' : ''}${Math.round(result.eloDifference)}</td>
@@ -989,7 +989,7 @@
 					this.string('name'),
 					this.string('winRate'),
 					...(this.mode === 'win' ? [this.string('tieRate')] : []),
-					this.string('effectiveScore'),
+					...(this.mode === 'win' ? [this.string('effectiveScore')] : []),
 					this.string('eloRating'),
 					this.string('eloDifference')
 				].join(separator);
@@ -1006,7 +1006,7 @@
 						result.name,
 						this.format(result.displayWinRate, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
 						...(this.mode === 'win' ? [result.tieRate || 0] : []),
-						this.format(result.effectiveScore * 100, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+						...(this.mode === 'win' ? [this.format(result.effectiveScore * 100, { minimumFractionDigits: 1, maximumFractionDigits: 1 })] : []),
 						Math.round(result.eloRating),
 						Math.round(result.eloDifference)
 					].map(escapeValue).join(separator);
