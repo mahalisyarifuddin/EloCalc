@@ -324,11 +324,8 @@
 <body>
 	<div class="container">
 		<div class="selectors">
-			<select id="mode">
-				<option value="win">Win Rate -> Elo</option>
-				<option value="elo">Elo -> Win Rate</option>
-			</select>
-			<select id="language"><option value="en">English</option><option value="id">Bahasa Indonesia</option></select>
+			<select id="mode"></select>
+			<select id="language"></select>
 			<select id="theme"><option value="auto"></option><option value="light"></option><option value="dark"></option></select>
 		</div>
 		<h1 id="title"></h1>
@@ -361,7 +358,7 @@
 				<button id="clear" class="secondary"></button>
 				<button id="import" class="secondary"></button>
 			</div>
-			<input type="file" id="file" accept=".csv,.tsv,.txt" class="hidden">
+			<input type="file" id="file" accept=".csvContent,.tsvContent,.txt" class="hidden">
 			<span id="error" class="error hidden" aria-live="polite"></span>
 			<button id="calculate" class="primary"></button>
 		</div>
@@ -465,44 +462,51 @@
 				rank: '#'
 			}
 		};
-		const elements = new Proxy({}, { get: (_, id) => document.getElementById(id) });
-		const escape = string => string.replace(/[&<>"']/g, char => '&#' + char.charCodeAt(0) + ';');
+		const elements = new Proxy({},{ get: (_,identifier)=>document.getElementById(identifier) });
+		const escape = string=>string.replace(/[&<>"']/g,character=>'&#' + character.charCodeAt(0) + ';');
 
-		const parseCSV = text => {
-			const firstLine = text.split('\n')[0];
-			let commas = 0, tabs = 0, inside = false;
-			for (const char of firstLine) {
-				if (char === '"') inside = !inside;
-				else if (!inside) { if (char === ',') commas++; else if (char === '\t') tabs++; }
-			}
-			const separator = tabs >= commas && tabs > 0 ? '\t' : ',';
-			const rows = [];
-			let currentRow = [], currentCell = '';
-			let insideQuote = false;
-
-			for (let index = 0; index < text.length; index++) {
-				const char = text[index];
-				const nextChar = text[index + 1];
-				if (char === '"') insideQuote = !insideQuote;
-				if (char === separator && !insideQuote) {
-					currentRow.push(currentCell);
-					currentCell = '';
-				} else if ((char === '\n' || char === '\r') && !insideQuote) {
-					if (char === '\r' && nextChar === '\n') index++;
-					currentRow.push(currentCell);
-					if (currentRow.length > 1 || currentRow[0].trim()) rows.push(currentRow);
-					currentRow = [];
-					currentCell = '';
-				} else {
-					currentCell += char;
-				}
-			}
-			if (currentCell || currentRow.length) {
-				currentRow.push(currentCell);
-				if (currentRow.length > 1 || currentRow[0].trim()) rows.push(currentRow);
-			}
-			return rows.map(row => row.map(cell => cell.trim().replace(/^"|"$/g, '').replace(/""/g, '"')));
-		};
+		const parseCSV = text=>(
+			(firstLine=>(
+				(separator=>(
+					(result=>(
+						(result.currentCell || result.currentRow.length) && (
+							result.currentRow.push(result.currentCell),
+							(result.currentRow.length > 1 || result.currentRow[0].trim()) && result.rows.push(result.currentRow)
+						),
+						result.rows.map(row=>row.map(cell=>cell.trim()
+							.replace(/^"|"$/g,'')
+							.replace(/""/g,'"')))
+					))(
+						Array.from(text).reduce((accumulator,character,index)=>(
+							accumulator.skip ? (accumulator.skip = false) : (
+								character === '"' ? (accumulator.insideQuote = !accumulator.insideQuote) : undefined,
+								(character === separator && !accumulator.insideQuote) ? (
+									accumulator.currentRow.push(accumulator.currentCell),
+									accumulator.currentCell = ''
+								) : ((character === '\n' || character === '\r') && !accumulator.insideQuote) ? (
+									(character === '\r' && text[index + 1] === '\n') && (accumulator.skip = true),
+									accumulator.currentRow.push(accumulator.currentCell),
+									(accumulator.currentRow.length > 1 || accumulator.currentRow[0].trim()) && accumulator.rows.push(accumulator.currentRow),
+									accumulator.currentRow = [],
+									accumulator.currentCell = ''
+								) : (
+									accumulator.currentCell += character
+								)
+							),
+							accumulator
+						), { rows: [], currentRow: [], currentCell: '', insideQuote: false, skip: false })
+					)
+				))(
+					(stats=>stats.tabs >= stats.commas && stats.tabs > 0 ? '\t' : ',')(
+						Array.from(firstLine).reduce((accumulator,character)=>(
+							character === '"' ? (accumulator.inside = !accumulator.inside) :
+							!accumulator.inside ? (character === ',' ? accumulator.commas++ : character === '\t' ? accumulator.tabs++ : undefined) : undefined,
+							accumulator
+						), { commas: 0, tabs: 0, inside: false })
+					)
+				)
+			))(text.split('\n')[0])
+		);
 
 		class EloCalc {
 			constructor() {
@@ -510,7 +514,7 @@
 					'Player B': [65, 10, 1000],
 					'Player C': [45, 15, 1200],
 					'Player D': [30, 20, 800]
-				}).map(([name, [winRate, tieRate, elo]], index) => ({ id: index + 1, name, winRate, tieRate, elo }));
+				}).map(([name,[winRate,tieRate,elo]],index)=>({ identifier: index + 1,name,winRate,tieRate,elo }));
 				this.nextIndex = 4;
 				this.data = null;
 				this.allowTies = true;
@@ -526,99 +530,119 @@
 			}
 
 			setup() {
-				const handlers = {
-					add: () => this.add(),
-					clear: () => this.clear(),
-					calculate: () => this.calculate(),
-					edit: () => this.display('input'),
-					copy: () => this.copy(),
-					export: () => this.export(),
-					import: () => elements.file.click()
-				};
-				Object.entries(handlers).forEach(([id, handler]) => elements[id].onclick = handler);
-				elements.file.onchange = event => this.load(event.target.files[0]);
-				elements.input.oninput = event => {
-					this.error();
-					if (event.target.matches('.win-input, .tie-input')) this.validateRow(event.target.closest('.competitor-row'));
-				};
-				elements.language.onchange = event => this.lang(event.target.value);
-				elements.theme.onchange = event => this.theme(event.target.value);
-				elements.mode.onchange = event => this.setMode(event.target.value);
-				elements.allowTies.onchange = event => {
-					this.allowTies = event.target.checked;
-					elements.headTie.classList.toggle('hidden', !this.allowTies);
-					document.querySelectorAll('.tie-input').forEach(el => el.classList.toggle('hidden', !this.allowTies));
-					document.querySelectorAll('.competitor-row').forEach(row => this.validateRow(row));
-				};
-				elements.allowTies.checked = this.allowTies;
-				elements.anchorMain.onchange = event => { this.anchorMain = event.target.checked; this.calculate(); };
-				elements.anchorMain.checked = this.anchorMain;
-				elements.normalizeElo.onchange = event => { this.normalizeElo = event.target.checked; this.calculate(); };
-				elements.normalizeElo.checked = this.normalizeElo;
-				document.onkeydown = event => this.key(event);
-				elements.resultsTable.addEventListener('click', event => this.handleTableClick(event));
-				elements.resultsTable.addEventListener('keydown', event => this.handleTableKey(event));
-				elements.list.onclick = event => {
-					const row = event.target.closest('.competitor-row');
-					if (event.target.matches('.danger') && row) this.remove(+row.dataset.id);
-				};
-				elements.list.onchange = event => {
-					const row = event.target.closest('.competitor-row');
-					const competitor = row && this.competitors.find(c => c.id === +row.dataset.id);
-					if (competitor) this.updateCompetitor(competitor, event.target);
-				};
+				return (
+					elements.mode.innerHTML = '<option value="win"></option><option value="elo"></option>',
+					elements.language.innerHTML = '<option value="en">English</option><option value="id">Bahasa Indonesia</option>',
+					(handlers=>(
+						Object.entries(handlers).forEach(([identifier,handler])=>elements[identifier].onclick = handler)
+					))({
+						add: ()=>this.add(),
+						clear: ()=>this.clear(),
+						calculate: ()=>this.calculate(),
+						edit: ()=>this.display('input'),
+						copy: ()=>this.copy(),
+						export: ()=>this.export(),
+						import: ()=>elements.file.click()
+					}),
+					elements.file.onchange = event=>this.load(event.target.files[0]),
+					elements.input.oninput = event=>(
+						this.error(),
+						event.target.matches('.win-input, .tie-input') && this.validateRow(event.target.closest('.competitor-row'))
+					),
+					elements.language.onchange = event=>this.lang(event.target.value),
+					elements.theme.onchange = event=>this.theme(event.target.value),
+					elements.mode.onchange = event=>this.setMode(event.target.value),
+					elements.allowTies.onchange = event=>(
+						this.allowTies = event.target.checked,
+						elements.headTie.classList.toggle('hidden', !this.allowTies),
+						document.querySelectorAll('.tie-input').forEach(element=>element.classList.toggle('hidden',!this.allowTies)),
+						document.querySelectorAll('.competitor-row').forEach(row=>this.validateRow(row))
+					),
+					elements.allowTies.checked = this.allowTies,
+					elements.anchorMain.onchange = event=>(this.anchorMain = event.target.checked,this.calculate()),
+					elements.anchorMain.checked = this.anchorMain,
+					elements.normalizeElo.onchange = event=>(this.normalizeElo = event.target.checked,this.calculate()),
+					elements.normalizeElo.checked = this.normalizeElo,
+					document.onkeydown = event=>this.key(event),
+					elements.resultsTable.addEventListener('click',event=>this.handleTableClick(event)),
+					elements.resultsTable.addEventListener('keydown',event=>this.handleTableKey(event)),
+					elements.list.onclick = event=>(
+						(row=>(
+							(event.target.matches('.danger') && row) && this.remove(+row.dataset.identifier)
+						))(event.target.closest('.competitor-row'))
+					),
+					elements.list.onchange = event=>(
+						(row=>(
+							(competitor=>(
+								competitor && this.updateCompetitor(competitor, event.target)
+							))(row && this.competitors.find(competitor=>competitor.identifier === +row.dataset.identifier))
+						))(event.target.closest('.competitor-row'))
+					)
+				);
 			}
 
 			key(event) {
-				if (event.key !== 'Enter') return;
-				if (event.ctrlKey || event.metaKey) { this.calculate(); return; }
-				if (event.target.matches('input') && event.target.closest('.competitor-row')) {
-					event.preventDefault();
-					const row = event.target.closest('.competitor-row');
-					const competitor = this.competitors.find(c => c.id === +row.dataset.id);
-					if (competitor) this.updateCompetitor(competitor, event.target);
-					this.focusNext(event.target, row);
-				} else if (event.target.matches('#mainName, #allowTies')) {
-					event.preventDefault();
-					const firstInput = elements.list.firstElementChild?.querySelector('input');
-					if (firstInput) firstInput.focus();
-					else elements.add.focus();
-				}
+				return (
+					event.key === 'Enter' && (
+						(event.ctrlKey || event.metaKey) ? this.calculate() :
+						(event.target.matches('input') && event.target.closest('.competitor-row')) ? (
+							event.preventDefault(),
+							(row=>(
+								(competitor=>(
+									competitor && this.updateCompetitor(competitor, event.target),
+									this.focusNext(event.target, row)
+								))(this.competitors.find(competitor=>competitor.identifier === +row.dataset.identifier))
+							))(event.target.closest('.competitor-row'))
+						) : (event.target.matches('#mainName, #allowTies')) ? (
+							event.preventDefault(),
+							(firstInput=>firstInput ? firstInput.focus() : elements.add.focus())(elements.list.firstElementChild?.querySelector('input'))
+						) : undefined
+					)
+				);
 			}
 
 			handleTableClick(event) {
-				const header = event.target.closest('th[data-sort]');
-				if (header) { this.sortResults(header.dataset.sort); return; }
-				const row = event.target.closest('tr[data-id]');
-				if (row) this.setBaseline(row.dataset.id);
+				return (
+					(header=>(
+						header ? this.sortResults(header.dataset.sort) : (row=>row && this.setBaseline(row.dataset.identifier))(event.target.closest('tr[data-identifier]'))
+					))(event.target.closest('th[data-sort]'))
+				);
 			}
 
 			handleTableKey(event) {
-				if (event.key !== 'Enter' && event.key !== ' ') return;
-				const header = event.target.closest('th[data-sort]');
-				if (header) { event.preventDefault(); this.sortResults(header.dataset.sort); return; }
-				const row = event.target.closest('tr[data-id]');
-				if (row) { event.preventDefault(); this.setBaseline(row.dataset.id); }
+				return (
+					(event.key === 'Enter' || event.key === ' ') && (
+						(header=>(
+							header ? (event.preventDefault(),this.sortResults(header.dataset.sort)) : (row=>row && (event.preventDefault(),this.setBaseline(row.dataset.identifier)))(event.target.closest('tr[data-identifier]'))
+						))(event.target.closest('th[data-sort]'))
+					)
+				);
 			}
 
 			updateCompetitor(competitor, target) {
-				const value = target.value;
-				if (target.classList.contains('name-input')) competitor.name = value;
-				else if (target.classList.contains('win-input')) this.updateRate(competitor, 'winRate', value, target);
-				else if (target.classList.contains('tie-input')) this.updateRate(competitor, 'tieRate', value, target);
-				else if (target.classList.contains('elo-input')) this.updateRate(competitor, 'elo', value, target);
+				return (
+					(value=>(
+						target.classList.contains('name-input') ? (competitor.name = value) :
+						target.classList.contains('win-input') ? this.updateRate(competitor, 'winRate', value, target) :
+						target.classList.contains('tie-input') ? this.updateRate(competitor, 'tieRate', value, target) :
+						target.classList.contains('elo-input') ? this.updateRate(competitor, 'elo', value, target) : undefined
+					))(target.value)
+				);
 			}
 
 			updateRate(competitor, property, value, target) {
-				const number = value === '' ? '' : (parseFloat(value) || 0);
-				competitor[property] = number;
+				return (
+					competitor[property] = value === '' ? '' : (parseFloat(value) || 0)
+				);
 			}
 
 			focusNext(target, row) {
-				if (target.type === 'text') target.nextElementSibling?.focus();
-				else if (target.classList.contains('win-input') && this.allowTies) target.nextElementSibling?.focus();
-				else if (row.nextElementSibling) row.nextElementSibling.querySelector('input')?.focus();
-				else this.add();
+				return (
+					target.type === 'text' ? target.nextElementSibling?.focus() :
+					(target.classList.contains('win-input') && this.allowTies) ? target.nextElementSibling?.focus() :
+					row.nextElementSibling ? row.nextElementSibling.querySelector('input')?.focus() :
+					this.add()
+				);
 			}
 
 			string(key) { return text[this.language]?.[key] ?? key; }
@@ -630,403 +654,455 @@
 			}
 
 			lang(language) {
-				this.language = elements.language.value = document.documentElement.lang = language;
-				Object.keys(text.en).forEach(key => { if (elements[key]) elements[key].textContent = this.string(key); });
-				this.updateLabels();
-				[...elements.theme.options].forEach(option => option.textContent = this.string(option.value + 'Theme'));
-				[['language', 'languageLabel'], ['theme', 'themeLabel'], ['mode', 'modeLabel']].forEach(([id, key]) => elements[id].setAttribute('aria-label', this.string(key)));
-				this.renderCompetitors();
-				if (!elements.results.classList.contains('hidden') && this.data) this.renderResults();
+				return (
+					this.language = elements.language.value = document.documentElement.lang = language,
+					Object.keys(text.en).forEach(key=>elements[key] && (elements[key].textContent = this.string(key))),
+					this.updateLabels(),
+					[...elements.theme.options].forEach(option=>option.textContent = this.string(option.value + 'Theme')),
+					[['language','languageLabel'],['theme','themeLabel'],['mode','modeLabel']].forEach(([identifier,key])=>elements[identifier].setAttribute('aria-label',this.string(key))),
+					this.renderCompetitors(),
+					(!elements.results.classList.contains('hidden') && this.data) && this.renderResults()
+				);
 			}
 
 			setMode(mode) {
-				this.mode = mode;
-				elements.input.className = `mode-${mode}`;
-				elements.mode.value = mode;
-				this.error();
-				this.renderCompetitors();
+				return (
+					this.mode = mode,
+					elements.input.className = `mode-${mode}`,
+					elements.mode.value = mode,
+					this.error(),
+					this.renderCompetitors()
+				);
 			}
 
 			updateLabels() {
-				elements.headName.textContent = this.string('name');
-				elements.headWin.textContent = this.string('winRatePlaceholder');
-				elements.headTie.textContent = this.string('tieRatePlaceholder');
-				elements.headElo.textContent = this.string('eloPlaceholder');
-				[...elements.mode.options].forEach(option => option.textContent = this.string(option.value === 'win' ? 'modeWin' : 'modeElo'));
+				return (
+					elements.headName.textContent = this.string('name'),
+					elements.headWin.textContent = this.string('winRatePlaceholder'),
+					elements.headTie.textContent = this.string('tieRatePlaceholder'),
+					elements.headElo.textContent = this.string('eloPlaceholder'),
+					[...elements.mode.options].forEach(option=>option.textContent = this.string(option.value === 'win' ? 'modeWin' : 'modeElo'))
+				);
 			}
 
 			display(section) {
-				['input', 'results'].forEach(id => elements[id].classList.toggle('hidden', id !== section));
-				if (section === 'results') { elements.results.setAttribute('tabindex', '-1'); elements.results.focus(); }
-				else elements.mainName.focus();
+				return (
+					['input','results'].forEach(identifier=>elements[identifier].classList.toggle('hidden',identifier !== section)),
+					section === 'results' ? (elements.results.setAttribute('tabindex', '-1'), elements.results.focus()) : elements.mainName.focus()
+				);
 			}
 
 			error(message) {
-				elements.error.textContent = message || '';
-				elements.error.classList.toggle('hidden', !message);
+				return (
+					elements.error.textContent = message || '',
+					elements.error.classList.toggle('hidden', !message)
+				);
 			}
 
 			add() {
-				this.error();
-				this.competitors.push({ id: this.nextIndex++, name: '', winRate: '', tieRate: '', elo: '' });
-				this.renderCompetitors();
-				elements.list.lastElementChild?.querySelector('input')?.focus();
+				return (
+					this.error(),
+					this.competitors.push({ identifier: this.nextIndex++, name: '', winRate: '', tieRate: '', elo: '' }),
+					this.renderCompetitors(),
+					elements.list.lastElementChild?.querySelector('input')?.focus()
+				);
 			}
 
 			clear() {
-				if (confirm(this.string('clearConfirm'))) {
-					this.competitors = [];
-					this.renderCompetitors();
-					this.add();
-					this.error();
-				}
+				return (
+					confirm(this.string('clearConfirm')) && (
+						this.competitors = [],
+						this.renderCompetitors(),
+						this.add(),
+						this.error()
+					)
+				);
 			}
 
-			remove(id) {
-				this.error();
-				const index = this.competitors.findIndex(c => c.id === id);
-				this.competitors = this.competitors.filter(c => c.id !== id);
-				this.renderCompetitors();
-				const target = Math.min(index, this.competitors.length - 1);
-				if (target >= 0) elements.list.children[target]?.querySelector('.danger')?.focus();
-				else elements.add.focus();
+			remove(identifier) {
+				return (
+					this.error(),
+					(index=>(
+						this.competitors = this.competitors.filter(competitor=>competitor.identifier !== identifier),
+						this.renderCompetitors(),
+						(target=>(
+							target >= 0 ? elements.list.children[target]?.querySelector('.danger')?.focus() : elements.add.focus()
+						))(Math.min(index, this.competitors.length - 1))
+					))(this.competitors.findIndex(competitor=>competitor.identifier === identifier))
+				);
 			}
 
 			renderCompetitors() {
-				elements.headTie.classList.toggle('hidden', !this.allowTies);
-				elements.list.innerHTML = this.competitors.map((competitor, index) => {
-					const invalid = this.isInvalid(competitor) ? 'invalid' : '';
-					return `<div class="competitor-row" data-id="${competitor.id}">
-						<input type="text" class="name-input" value="${escape(competitor.name)}" placeholder="${this.string('competitorPlaceholder')}" aria-label="${this.string('competitorPlaceholder')} ${index + 1}">
-						<input type="number" class="win-input ${invalid}" value="${competitor.winRate}" placeholder="${this.string('winRatePlaceholder')}" min="0" max="100" step="0.1" aria-label="${this.string('winRatePlaceholder')} ${index + 1}">
-						<input type="number" class="tie-input ${this.allowTies ? '' : 'hidden'} ${invalid}" value="${competitor.tieRate}" placeholder="${this.string('tieRatePlaceholder')}" min="0" max="100" step="0.1" aria-label="${this.string('tieRatePlaceholder')} ${index + 1}">
-						<input type="number" class="elo-input" value="${competitor.elo}" placeholder="${this.string('eloPlaceholder')}" aria-label="${this.string('eloPlaceholder')} ${index + 1}">
-						<button class="danger" aria-label="${this.string('removeCompetitor')} ${index + 1}">×</button>
-					</div>`;
-				}).join('');
+				return (
+					elements.headTie.classList.toggle('hidden', !this.allowTies),
+					elements.list.innerHTML = this.competitors.map((competitor,index)=>(
+						(invalid=>(
+							`<div class="competitor-row" data-identifier="${competitor.identifier}">
+								<input type="text" class="name-input" value="${escape(competitor.name)}" placeholder="${this.string('competitorPlaceholder')}" aria-label="${this.string('competitorPlaceholder')} ${index + 1}">
+								<input type="number" class="win-input ${invalid}" value="${competitor.winRate}" placeholder="${this.string('winRatePlaceholder')}" min="0" max="100" step="0.1" aria-label="${this.string('winRatePlaceholder')} ${index + 1}">
+								<input type="number" class="tie-input ${this.allowTies ? '' : 'hidden'} ${invalid}" value="${competitor.tieRate}" placeholder="${this.string('tieRatePlaceholder')}" min="0" max="100" step="0.1" aria-label="${this.string('tieRatePlaceholder')} ${index + 1}">
+								<input type="number" class="elo-input" value="${competitor.elo}" placeholder="${this.string('eloPlaceholder')}" aria-label="${this.string('eloPlaceholder')} ${index + 1}">
+								<button class="danger" aria-label="${this.string('removeCompetitor')} ${index + 1}">×</button>
+							</div>`
+						))(this.isInvalid(competitor) ? 'invalid' : '')
+					)).join('')
+				);
 			}
 
 			load(file) {
-				const reader = new FileReader();
-				reader.onload = event => {
-					try {
-						const rows = parseCSV(event.target.result);
-						if (!rows.length) throw new Error();
-
-						const header = rows[0];
-						const find = regex => header.findIndex(cell => regex.test(cell));
-						let nameIndex = find(/name|nama/i);
-						let winIndex = find(/win|menang/i);
-						let tieIndex = find(/tie|seri/i);
-
-						if (nameIndex < 0 || winIndex < 0) {
-							nameIndex = 0;
-							winIndex = 1;
-							const isAllNumbers = header.every(cell => /^\d+$/.test(cell.replace(/[.,]/g, '').trim()));
-							if (isAllNumbers) {
-								winIndex = header.findIndex(cell => /^\d+$/.test(cell.replace(/[.,]/g, '').trim()));
-								nameIndex = 1 - winIndex;
-							}
-						}
-
-						if (nameIndex < 0 || winIndex < 0) throw new Error();
-
-						const isWinNum = !isNaN(parseFloat((header[winIndex] || '').replace(',', '.')));
-						const hasHeader = (find(/name|nama/i) >= 0 || find(/win|menang/i) >= 0) || !isWinNum;
-
-						const competitors = (hasHeader ? rows.slice(1) : rows).map(cells => {
-							if (!cells[nameIndex]) return null;
-							const winRate = +((cells[winIndex] || '').replace(/,/g, '.').replace(/[^\d.]/g, '')) || 0;
-							const tieRate = tieIndex >= 0 ? (+((cells[tieIndex] || '').replace(/,/g, '.').replace(/[^\d.]/g, '')) || 0) : 0;
-							return { id: this.nextIndex++, name: cells[nameIndex], winRate, tieRate };
-						}).filter(Boolean);
-
-						if (!competitors.length) throw new Error();
-
-						this.competitors = competitors;
-						if (tieIndex >= 0) { this.allowTies = true; elements.allowTies.checked = true; }
-						this.error();
-						this.renderCompetitors();
-						elements.file.value = '';
-					} catch {
-						this.error(this.string('alertImport'));
-					}
-				};
-				if (file) reader.readAsText(file);
+				return (
+					(reader=>(
+						reader.onload = event=>(
+							(result=>(
+								((()=>{
+									try {
+										return (rows=>(
+											!rows.length ? this.error(this.string('alertImport')) : (
+												(header=>(
+													(find=>(
+														(nameIndexInitial=>(
+															(winIndexInitial=>(
+																(tieIndexInitial=>(
+																	(([nameIndex,winIndex])=>(
+																		(nameIndex < 0 || winIndex < 0) ? this.error(this.string('alertImport')) : (
+																			(isWinNum=>(
+																				(hasHeader=>(
+																					(competitors=>(
+																						!competitors.length ? this.error(this.string('alertImport')) : (
+																							this.competitors = competitors,
+																							tieIndexInitial >= 0 && (this.allowTies = true, elements.allowTies.checked = true),
+																							this.error(),
+																							this.renderCompetitors(),
+																							elements.file.value = ''
+																						)
+																					))((hasHeader ? rows.slice(1) : rows).map(cells=>(
+																						cells[nameIndex] ? {
+																							identifier: this.nextIndex++,
+																							name: cells[nameIndex],
+																							winRate: +((cells[winIndex] || '').replace(/,/g, '.').replace(/[^\d.]/g, '')) || 0,
+																							tieRate: tieIndexInitial >= 0 ? (+((cells[tieIndexInitial] || '').replace(/,/g, '.').replace(/[^\d.]/g, '')) || 0) : 0
+																						} : null
+																					)).filter(Boolean))
+																				))((find(/name|nama/i) >= 0 || find(/win|menang/i) >= 0) || !isWinNum)
+																			))(!isNaN(parseFloat((header[winIndex] || '').replace(',', '.'))))
+																		)
+																	))(
+																		(nameIndexInitial < 0 || winIndexInitial < 0) ? (
+																			(isAllNumbers=>(
+																				isAllNumbers ? (
+																					(winIndex=>[1 - winIndex,winIndex])(header.findIndex(cell=>/^\d+$/.test(cell.replace(/[.,]/g,'').trim())))
+																				) : [0, 1]
+																			))(header.every(cell=>/^\d+$/.test(cell.replace(/[.,]/g,'').trim())))
+																		) : [nameIndexInitial, winIndexInitial]
+																	)
+																))(find(/tie|seri/i))
+															))(find(/win|menang/i))
+														))(find(/name|nama/i))
+													))(regularExpression=>header.findIndex(cell=>regularExpression.test(cell)))
+												))(rows[0])
+											)
+										))(parseCSV(result));
+									} catch (error) {
+										return this.error(this.string('alertImport'));
+									}
+								})())
+							))(event.target.result)
+						),
+						file && reader.readAsText(file)
+					))(new FileReader())
+				);
 			}
 
 			calculate() {
-				this.error();
-				const mainName = elements.mainName.value.trim() || 'Main';
-
-				this.competitors = this.competitors.filter(c =>
-					c.name.trim() ||
-					(this.mode === 'win' && (c.winRate > 0 || c.tieRate > 0)) ||
-					(this.mode === 'elo' && c.elo !== '')
+				return (
+					this.error(),
+					(mainName=>(
+						this.competitors = this.competitors.filter(competitor=>
+							competitor.name.trim() ||
+							(this.mode === 'win' && (competitor.winRate > 0 || competitor.tieRate > 0)) ||
+							(this.mode === 'elo' && competitor.elo !== '')
+						),
+						this.renderCompetitors(),
+						(errorIdentifier=>(
+							errorIdentifier ? this.error(this.string(errorIdentifier)) : this.performCalculation(mainName)
+						))(
+							!this.competitors.length ? 'alertCompetitors' :
+							(this.mode === 'win' && this.hasInvalidRates()) ? 'alertInvalidRate' : null
+						)
+					))(elements.mainName.value.trim() || 'Main')
 				);
-				this.renderCompetitors();
-
-				let error = !this.competitors.length ? 'alertCompetitors' : null;
-				if (!error && this.mode === 'win' && this.hasInvalidRates()) error = 'alertInvalidRate';
-
-				if (error) this.error(this.string(error));
-				else this.performCalculation(mainName);
 			}
 
 			hasInvalidRates() {
-				return this.competitors.some(competitor => {
-					const tieRate = this.allowTies ? +competitor.tieRate : 0;
-					const winRate = +competitor.winRate;
-					return winRate < 0 || winRate > 100 || tieRate < 0 || tieRate > 100 || winRate + tieRate > 100;
-				});
+				return this.competitors.some(competitor=>(
+					(tieRate=>tieRate < 0 || tieRate > 100 || +competitor.winRate < 0 || +competitor.winRate > 100 || +competitor.winRate + tieRate > 100)(this.allowTies ? +competitor.tieRate : 0)
+				));
 			}
 
 			performCalculation(mainName) {
-				let allResults = [];
-				let baselineId = 'main';
-				let averageElo = 0;
-
-				if (this.mode === 'win') {
-					const rawResults = this.competitors.map(competitor => this.calculateRow(competitor));
-					allResults = [{ name: mainName, rawElo: 0, isMain: true, id: 'main', winRate: 50, tieRate: 0 }, ...rawResults];
-					const rawAverage = allResults.reduce((sum, result) => sum + result.rawElo, 0) / allResults.length;
-					let adjustment;
-					if (this.anchorMain) {
-						adjustment = 1000;
-						averageElo = rawAverage + 1000;
-					} else {
-						adjustment = 1000 - rawAverage;
-						averageElo = 1000;
-					}
-					allResults.forEach(result => result.eloRating = result.rawElo + adjustment);
-				} else {
-					allResults = this.competitors.map(c => ({ name: c.name.trim() || `Competitor ${c.id}`, eloRating: parseFloat(c.elo) || 0, id: c.id }));
-					if (allResults.length > 0) {
-						averageElo = allResults.reduce((sum, result) => sum + result.eloRating, 0) / allResults.length;
-						if (this.normalizeElo) {
-							const adjustment = 1000 - averageElo;
-							allResults.forEach(result => result.eloRating += adjustment);
-							averageElo = 1000;
-						}
-						baselineId = allResults[0].id;
-					}
-				}
-
-				const targetAverage = averageElo;
-				let closestId = null;
-				let minDifference = Infinity;
-
-				allResults.forEach(result => {
-					const difference = Math.abs(result.eloRating - targetAverage);
-					if (difference < minDifference) { minDifference = difference; closestId = result.id; }
-				});
-
-				this.data = {
-					results: allResults.sort((a, b) => b.eloRating - a.eloRating),
-					allowTies: this.allowTies,
-					baselineId: this.data?.baselineId && allResults.find(r => r.id === this.data.baselineId) ? this.data.baselineId : baselineId,
-					closestId
-				};
-				this.sortState = { field: 'eloRating', direction: -1 };
-				this.updateRelativeStats();
-				this.renderResults();
-				this.display('results');
+				return (
+					(resultsData=>(
+						(targetAverage=>(
+							(closestResult=>(
+								this.data = {
+									results: resultsData.allResults.sort((resultA,resultB)=>resultB.eloRating - resultA.eloRating),
+									allowTies: this.allowTies,
+									baselineIdentifier: this.data?.baselineIdentifier && resultsData.allResults.find(result=>result.identifier === this.data.baselineIdentifier) ? this.data.baselineIdentifier : resultsData.baselineIdentifier,
+									closestIdentifier: closestResult.identifier
+								},
+								this.sortState = { field: 'eloRating', direction: -1 },
+								this.updateRelativeStats(),
+								this.renderResults(),
+								this.display('results')
+							))(resultsData.allResults.reduce((closest,result)=>Math.abs(result.eloRating - targetAverage) < Math.abs(closest.eloRating - targetAverage) ? result : closest,resultsData.allResults[0]))
+						))(resultsData.averageElo)
+					))(
+						this.mode === 'win' ? (
+							(rawResults=>(
+								(allResultsWithoutAdjustment=>(
+									(rawAverage=>(
+										(adjustment=>(
+											allResultsWithoutAdjustment.forEach(result=>result.eloRating = result.rawElo + adjustment),
+											{ allResults: allResultsWithoutAdjustment, baselineIdentifier: 'main', averageElo: rawAverage + adjustment }
+										))(this.anchorMain ? 1000 : 1000 - rawAverage)
+									))(allResultsWithoutAdjustment.reduce((totalElo,result)=>totalElo + result.rawElo,0) / allResultsWithoutAdjustment.length)
+								))([{ name: mainName, rawElo: 0, isMain: true, identifier: 'main', winRate: 50, tieRate: 0 }, ...rawResults])
+							))(this.competitors.map(competitor=>this.calculateRow(competitor)))
+						) : (
+							(allResultsInitial=>(
+								allResultsInitial.length > 0 ? (
+									(averageEloInitial=>(
+										(adjustment=>(
+											(this.normalizeElo && allResultsInitial.forEach(result=>result.eloRating += adjustment)),
+											{ allResults: allResultsInitial, baselineIdentifier: allResultsInitial[0].identifier, averageElo: this.normalizeElo ? 1000 : averageEloInitial }
+										))(1000 - averageEloInitial)
+									))(allResultsInitial.reduce((totalElo,result)=>totalElo + result.eloRating,0) / allResultsInitial.length)
+								) : { allResults: [], baselineIdentifier: null, averageElo: 0 }
+							))(this.competitors.map(competitor=>({ name: competitor.name.trim() || `Competitor ${competitor.identifier}`,eloRating: parseFloat(competitor.elo) || 0,identifier: competitor.identifier })))
+						)
+					)
+				);
 			}
 
 			updateRelativeStats() {
-				if (!this.data) return;
-				const { results, baselineId } = this.data;
-				const baselineCompetitor = results.find(r => r.id === baselineId) || results[0];
-
-				let currentRank = 1;
-				this.processedResults = results.map((result, index) => {
-					const { eloDifference, effectiveScore } = this.calculateRowStats(result, baselineCompetitor);
-					if (index === 0 || Math.round(result.eloRating) !== Math.round(results[index - 1].eloRating)) {
-						currentRank = index + 1;
-					}
-					return {
-						...result,
-						rank: currentRank,
-						eloDifference,
-						effectiveScore,
-						displayWinRate: this.mode === 'win' ? result.winRate : effectiveScore * 100
-					};
-				});
+				return (
+					this.data && (
+						(results=>(
+							(baselineCompetitor=>(
+								(currentRank=>(
+									this.processedResults = results.map((result,index)=>(
+										(index === 0 || Math.round(result.eloRating) !== Math.round(results[index - 1].eloRating)) && (currentRank = index + 1),
+										(stats=>({
+											...result,
+											rank: currentRank,
+											...stats,
+											displayWinRate: this.mode === 'win' ? result.winRate : stats.effectiveScore * 100
+										}))(this.calculateRowStats(result, baselineCompetitor))
+									))
+								))(1)
+							))(results.find(result=>result.identifier === this.data.baselineIdentifier) || results[0])
+						))(this.data.results)
+					)
+				);
 			}
 
 			calculateRow(competitor) {
-				const tieRate = this.allowTies ? +competitor.tieRate : 0;
-				const effectiveScore = (+competitor.winRate + tieRate * 0.5) / 100;
-
-				const eloDifference = effectiveScore >= 1 ? 2000 :
-				                    effectiveScore <= 0 ? -2000 :
-				                    -400 * Math.log10(1 / effectiveScore - 1);
-
-				return {
-					name: competitor.name.trim() || `Competitor ${competitor.id}`,
-					rawElo: eloDifference,
-					id: competitor.id,
-					winRate: +competitor.winRate,
-					tieRate
-				};
+				return (
+					(tieRate=>(
+						(effectiveScore=>(
+							(eloDifference=>({
+								name: competitor.name.trim() || `Competitor ${competitor.identifier}`,
+								rawElo: eloDifference,
+								identifier: competitor.identifier,
+								winRate: +competitor.winRate,
+								tieRate
+							}))(effectiveScore >= 1 ? 2000 : effectiveScore <= 0 ? -2000 : -400 * Math.log10(1 / effectiveScore - 1))
+						))((+competitor.winRate + tieRate * 0.5) / 100)
+					))(this.allowTies ? +competitor.tieRate : 0)
+				);
 			}
 
 			calculateRowStats(result, baselineCompetitor) {
-				const eloDifference = result.eloRating - baselineCompetitor.eloRating;
-				const effectiveScore = 1 / (1 + Math.pow(10, -eloDifference / 400));
-				return { eloDifference, effectiveScore };
+				return (
+					(eloDifference=>({
+						eloDifference,
+						effectiveScore: 1 / (1 + Math.pow(10, -eloDifference / 400))
+					}))(result.eloRating - baselineCompetitor.eloRating)
+				);
 			}
 
 			isInvalid(competitor) {
-				if (this.mode === 'elo') return false;
-				const tieRate = this.allowTies ? +competitor.tieRate : 0;
-				return (+competitor.winRate + tieRate) > 100;
+				return this.mode !== 'elo' && (+competitor.winRate + (this.allowTies ? +competitor.tieRate : 0)) > 100;
 			}
 
 			validateRow(row) {
-				if (!row || this.mode === 'elo') {
-					if (row) row.querySelectorAll('input').forEach(input => input.classList.remove('invalid'));
-					return;
-				}
-				const winInput = row.querySelector('.win-input');
-				const tieInput = row.querySelector('.tie-input');
-				if (!winInput || !tieInput) return;
-
-				const competitor = { winRate: winInput.value, tieRate: tieInput.value };
-				const invalid = this.isInvalid(competitor);
-
-				winInput.classList.toggle('invalid', invalid);
-				tieInput.classList.toggle('invalid', invalid && this.allowTies);
+				return (
+					(!row || this.mode === 'elo') ? (row && row.querySelectorAll('input').forEach(input=>input.classList.remove('invalid'))) : (
+						(winInput=>(
+							(tieInput=>(
+								(winInput && tieInput) && (
+									(invalid=>(
+										winInput.classList.toggle('invalid', invalid),
+										tieInput.classList.toggle('invalid', invalid && this.allowTies)
+									))(this.isInvalid({ winRate: winInput.value, tieRate: tieInput.value }))
+								)
+							))(row.querySelector('.tie-input'))
+						))(row.querySelector('.win-input'))
+					)
+				);
 			}
 
 			sortResults(field) {
-				if (this.sortState.field === field) this.sortState.direction *= -1;
-				else { this.sortState.field = field; this.sortState.direction = field === 'name' ? 1 : -1; }
-				this.renderResults();
+				return (
+					this.sortState.field === field ? (this.sortState.direction *= -1) : (this.sortState.field = field, this.sortState.direction = field === 'name' ? 1 : -1),
+					this.renderResults()
+				);
 			}
 
 			renderResults() {
-				if (!this.processedResults) return;
-				const { baselineId } = this.data;
-				const maxElo = Math.max(...this.data.results.map(r => r.eloRating), 1);
-
-				const { field, direction } = this.sortState;
-				// Create a shallow copy to sort
-				const sortedResults = [...this.processedResults].sort((a, b) => {
-					const valueA = a[field];
-					const valueB = b[field];
-					if (typeof valueA === 'string') return direction * valueA.localeCompare(valueB);
-					return direction * (valueA - valueB);
-				});
-
-				this.sortedResults = sortedResults;
-
-				const header = (key, label) => {
-					const active = this.sortState.field === key;
-					const className = active ? (this.sortState.direction === 1 ? 'sort-asc' : 'sort-desc') : '';
-					const ariaSort = active ? (this.sortState.direction === 1 ? 'ascending' : 'descending') : 'none';
-					return `<th class="${className}" data-sort="${key}" tabindex="0" role="columnheader" aria-sort="${ariaSort}">${label}</th>`;
-				};
-
-				const activeElement = document.activeElement;
-				const savedSort = activeElement ? activeElement.dataset.sort : null;
-				const savedId = activeElement ? activeElement.dataset.id : null;
-
-				elements.resultsTable.innerHTML = `
-					<h2>${this.string('resultsTitle')}</h2>
-					<p class="info">${this.string('infoText')}</p>
-					<div class="table-wrapper">
-						<table>
-							<thead>
-								<tr>
-									${header('eloRating', this.string('rank'))}
-									${header('name', this.string('name'))}
-									${header('displayWinRate', this.string('winRate'))}
-									${this.mode === 'win' ? header('tieRate', this.string('tieRate')) : ''}
-									${this.mode === 'win' ? header('effectiveScore', this.string('effectiveScore')) : ''}
-									${header('eloRating', this.string('eloRating'))}
-									${header('eloRating', this.string('relativeStrength'))}
-									${header('eloDifference', this.string('eloDifference'))}
-								</tr>
-							</thead>
-							<tbody>
-								${sortedResults.map((result, index) => {
-									const isBaseline = result.id === baselineId;
-									const isClosest = result.id === this.data.closestId && this.mode === 'elo';
-									return `<tr class="${isBaseline ? 'highlight' : ''} ${isClosest ? 'avg-highlight' : ''}" style="cursor: pointer" data-id="${result.id}" tabindex="0" aria-selected="${isBaseline}">
-										<td>${result.rank}</td>
-										<td><strong>${escape(result.name)}</strong>${isClosest ? ' <span title="Closest to Average">~</span>' : ''}</td>
-										<td>${this.format(result.displayWinRate, { maximumFractionDigits: 1 })}%</td>
-										${this.mode === 'win' ? `<td>${this.format(result.tieRate || 0, { maximumFractionDigits: 1 })}%</td>` : ''}
-										${this.mode === 'win' ? `<td>${this.format(result.effectiveScore * 100, { maximumFractionDigits: 1 })}%</td>` : ''}
-										<td><strong>${Math.round(result.eloRating)}</strong></td>
-										<td><div class="bar-container" title="${Math.round(result.eloRating)}" aria-hidden="true"><div class="bar" style="width:${Math.max(0, result.eloRating / maxElo * 100)}%"></div></div></td>
-										<td>${result.eloDifference > 0 ? '+' : ''}${Math.round(result.eloDifference)}</td>
-									</tr>`;
-								}).join('')}
-							</tbody>
-						</table>
-					</div>`;
-
-				if (savedSort) elements.resultsTable.querySelector(`th[data-sort="${savedSort}"]`)?.focus();
-				else if (savedId) elements.resultsTable.querySelector(`tr[data-id="${savedId}"]`)?.focus();
+				return (
+					this.processedResults && (
+						(baselineIdentifier=>(
+							(maxElo=>(
+								(field=>(
+									(direction=>(
+										(sortedResults=>(
+											this.sortedResults = sortedResults,
+											(header=>(
+												(activeElement=>(
+													(savedSort=>(
+														(savedIdentifier=>(
+															elements.resultsTable.innerHTML = `
+																<h2>${this.string('resultsTitle')}</h2>
+																<p class="info">${this.string('infoText')}</p>
+																<div class="table-wrapper">
+																	<table>
+																		<thead>
+																			<tr>
+																				${header('eloRating', this.string('rank'))}
+																				${header('name', this.string('name'))}
+																				${header('displayWinRate', this.string('winRate'))}
+																				${this.mode === 'win' ? header('tieRate', this.string('tieRate')) : ''}
+																				${this.mode === 'win' ? header('effectiveScore', this.string('effectiveScore')) : ''}
+																				${header('eloRating', this.string('eloRating'))}
+																				${header('eloRating', this.string('relativeStrength'))}
+																				${header('eloDifference', this.string('eloDifference'))}
+																			</tr>
+																		</thead>
+																		<tbody>
+																			${sortedResults.map((result,index)=>(
+																				(isBaseline=>(
+																					(isClosest=>(
+																						`<tr class="${isBaseline ? 'highlight' : ''} ${isClosest ? 'avg-highlight' : ''}" style="cursor: pointer" data-identifier="${result.identifier}" tabindex="0" aria-selected="${isBaseline}">
+																							<td>${result.rank}</td>
+																							<td><strong>${escape(result.name)}</strong>${isClosest ? ' <span title="Closest to Average">~</span>' : ''}</td>
+																							<td>${this.format(result.displayWinRate, { maximumFractionDigits: 1 })}%</td>
+																							${this.mode === 'win' ? `<td>${this.format(result.tieRate || 0, { maximumFractionDigits: 1 })}%</td>` : ''}
+																							${this.mode === 'win' ? `<td>${this.format(result.effectiveScore * 100, { maximumFractionDigits: 1 })}%</td>` : ''}
+																							<td><strong>${Math.round(result.eloRating)}</strong></td>
+																							<td><div class="bar-container" title="${Math.round(result.eloRating)}" aria-hidden="true"><div class="bar" style="width:${Math.max(0, result.eloRating / maxElo * 100)}%"></div></div></td>
+																							<td>${result.eloDifference > 0 ? '+' : ''}${Math.round(result.eloDifference)}</td>
+																						</tr>`
+																					))(result.identifier === this.data.closestIdentifier && this.mode === 'elo')
+																				))(result.identifier === baselineIdentifier)
+																			)).join('')}
+																		</tbody>
+																	</table>
+																</div>`,
+															savedSort ? elements.resultsTable.querySelector(`th[data-sort="${savedSort}"]`)?.focus() : (savedIdentifier && elements.resultsTable.querySelector(`tr[data-identifier="${savedIdentifier}"]`)?.focus())
+														))(activeElement ? activeElement.dataset.identifier : null)
+													))(activeElement ? activeElement.dataset.sort : null)
+												))(document.activeElement)
+											))((key,label)=>(
+												(active=>(
+													(className=>(
+														(ariaSort=>(
+															`<th class="${className}" data-sort="${key}" tabindex="0" role="columnheader" aria-sort="${ariaSort}">${label}</th>`
+														))(active ? (this.sortState.direction === 1 ? 'ascending' : 'descending') : 'none')
+													))(active ? (this.sortState.direction === 1 ? 'sort-asc' : 'sort-desc') : '')
+												))(this.sortState.field === key)
+											))
+										))([...this.processedResults].sort((resultA,resultB)=>(
+											(valueA=>(
+												(valueB=>(
+													typeof valueA === 'string' ? direction * valueA.localeCompare(valueB) : direction * (valueA - valueB)
+												))(resultB[field])
+											))(resultA[field])
+										)))
+									))(this.sortState.direction)
+								))(this.sortState.field)
+							))(Math.max(...this.data.results.map(result=>result.eloRating),1))
+						))(this.data.baselineIdentifier)
+					)
+				);
 			}
 
-			setBaseline(id) {
-				if (this.data) {
-					this.data.baselineId = isNaN(id) ? id : +id;
-					this.updateRelativeStats();
-					this.renderResults();
-				}
+			setBaseline(identifier) {
+				return (
+					this.data && (
+						this.data.baselineIdentifier = isNaN(identifier) ? identifier : +identifier,
+						this.updateRelativeStats(),
+						this.renderResults()
+					)
+				);
 			}
 
 			generateTableText(separator) {
-				if (!this.sortedResults) return null;
-				const results = this.sortedResults;
-
-				const headers = [
-					this.string('rank'),
-					this.string('name'),
-					this.string('winRate'),
-					...(this.mode === 'win' ? [this.string('tieRate')] : []),
-					...(this.mode === 'win' ? [this.string('effectiveScore')] : []),
-					this.string('eloRating'),
-					this.string('eloDifference')
-				].join(separator);
-
-				const escapeValue = value => {
-					const stringValue = String(value);
-					if (stringValue.includes(separator) || stringValue.includes('"') || stringValue.includes('\n')) return `"${stringValue.replace(/"/g, '""')}"`;
-					return stringValue;
-				};
-
-				return headers + '\n' + results.map(result => {
-					return [
-						result.rank,
-						result.name,
-						this.format(result.displayWinRate, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
-						...(this.mode === 'win' ? [result.tieRate || 0] : []),
-						...(this.mode === 'win' ? [this.format(result.effectiveScore * 100, { minimumFractionDigits: 1, maximumFractionDigits: 1 })] : []),
-						Math.round(result.eloRating),
-						Math.round(result.eloDifference)
-					].map(escapeValue).join(separator);
-				}).join('\n');
+				return (
+					this.sortedResults && (
+						(results=>(
+							(headers=>(
+								(escapeValue=>(
+									headers + '\n' + results.map(result=>(
+										[
+											result.rank,
+											result.name,
+											this.format(result.displayWinRate, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+											...(this.mode === 'win' ? [result.tieRate || 0] : []),
+											...(this.mode === 'win' ? [this.format(result.effectiveScore * 100, { minimumFractionDigits: 1, maximumFractionDigits: 1 })] : []),
+											Math.round(result.eloRating),
+											Math.round(result.eloDifference)
+										].map(escapeValue).join(separator)
+									)).join('\n')
+								))(value=>(
+									(stringValue=>(
+										(stringValue.includes(separator) || stringValue.includes('"') || stringValue.includes('\n')) ? `"${stringValue
+											.replace(/"/g,'""')}"` : stringValue
+									))(String(value))
+								))
+							))([
+								this.string('rank'),
+								this.string('name'),
+								this.string('winRate'),
+								...(this.mode === 'win' ? [this.string('tieRate')] : []),
+								...(this.mode === 'win' ? [this.string('effectiveScore')] : []),
+								this.string('eloRating'),
+								this.string('eloDifference')
+							].join(separator))
+						))(this.sortedResults)
+					)
+				);
 			}
 
 			export() {
-				const csv = this.generateTableText(',');
-				if (csv) Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv], { type: 'text/csv' })), download: `elo_ratings_${new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-')}.csv` }).click();
+				return (
+					(csvContent=>(
+						csvContent && Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csvContent], { type: 'text/csvContent' })), download: `elo_ratings_${new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-')}.csvContent` }).click()
+					))(this.generateTableText(','))
+				);
 			}
 
 			copy() {
-				const tsv = this.generateTableText('\t');
-				if (tsv) {
-					navigator.clipboard.writeText(tsv).then(() => {
-						const originalText = elements.copy.textContent;
-						elements.copy.textContent = this.string('copySuccess');
-						setTimeout(() => elements.copy.textContent = originalText, 2000);
-					});
-				}
+				return (
+					(tsvContent=>(
+						tsvContent && navigator.clipboard.writeText(tsvContent).then(()=>(
+							(originalText=>(
+								elements.copy.textContent = this.string('copySuccess'),
+								setTimeout(()=>elements.copy.textContent = originalText,2000)
+							))(elements.copy.textContent)
+						))
+					))(this.generateTableText('\t'))
+				);
 			}
 		}
 		new EloCalc();
