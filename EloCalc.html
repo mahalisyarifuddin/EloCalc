@@ -718,27 +718,31 @@
 						let nameIndex = find(/name|nama/i);
 						let winIndex = find(/win|menang/i);
 						let tieIndex = find(/tie|seri/i);
+						let eloIndex = find(/elo/i);
 
-						if (nameIndex < 0 || winIndex < 0) {
+						if (nameIndex < 0 || (winIndex < 0 && eloIndex < 0)) {
 							nameIndex = 0;
-							winIndex = 1;
+							if (this.mode === 'elo') eloIndex = 1; else winIndex = 1;
 							const isAllNumbers = header.every(cell => /^\d+$/.test(cell.replace(/[.,]/g, '').trim()));
 							if (isAllNumbers) {
-								winIndex = header.findIndex(cell => /^\d+$/.test(cell.replace(/[.,]/g, '').trim()));
-								nameIndex = 1 - winIndex;
+								const numIndex = header.findIndex(cell => /^\d+$/.test(cell.replace(/[.,]/g, '').trim()));
+								if (this.mode === 'elo') eloIndex = numIndex; else winIndex = numIndex;
+								nameIndex = 1 - numIndex;
 							}
 						}
 
-						if (nameIndex < 0 || winIndex < 0) throw new Error();
+						if (nameIndex < 0 || (winIndex < 0 && eloIndex < 0)) throw new Error();
 
-						const isWinNum = !isNaN(parseFloat((header[winIndex] || '').replace(',', '.')));
-						const hasHeader = (find(/name|nama/i) >= 0 || find(/win|menang/i) >= 0) || !isWinNum;
+						const targetIndex = this.mode === 'elo' && eloIndex >= 0 ? eloIndex : winIndex;
+						const isTargetNum = targetIndex >= 0 && !isNaN(parseFloat((header[targetIndex] || '').replace(',', '.')));
+						const hasHeader = find(/name|nama/i) >= 0 || find(/win|menang/i) >= 0 || find(/elo/i) >= 0 || !isTargetNum;
 
 						const competitors = (hasHeader ? rows.slice(1) : rows).map(cells => {
 							if (!cells[nameIndex]) return null;
-							const winRate = +((cells[winIndex] || '').replace(/,/g, '.').replace(/[^\d.]/g, '')) || 0;
+							const winRate = winIndex >= 0 ? +((cells[winIndex] || '').replace(/,/g, '.').replace(/[^\d.]/g, '')) || 0 : '';
 							const tieRate = tieIndex >= 0 ? (+((cells[tieIndex] || '').replace(/,/g, '.').replace(/[^\d.]/g, '')) || 0) : 0;
-							return { id: this.nextIndex++, name: cells[nameIndex], winRate, tieRate };
+							const elo = eloIndex >= 0 ? +((cells[eloIndex] || '').replace(/,/g, '.').replace(/[^\d.]/g, '')) || '' : '';
+							return { id: this.nextIndex++, name: cells[nameIndex], winRate, tieRate, elo };
 						}).filter(Boolean);
 
 						if (!competitors.length) throw new Error();
