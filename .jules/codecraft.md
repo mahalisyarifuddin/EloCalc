@@ -12,3 +12,8 @@
 **Mode:** Medic
 **Learning:** The previous CSV parsing logic for finding all-number rows and parsing values stripped negative signs using `[^\d.]` and used `|| ''` to provide fallbacks. This caused negative Elos to become positive (e.g. `-1200` to `1200`), and a genuine `0` Elo to become `''` because `0` is falsy, which effectively ignored the entry.
 **Action:** Implemented a robust `parseNum` function that uses `parseFloat`, explicitly preserves negative signs with `[^\d.-]`, and only provides the fallback on `isNaN`. Updated `isAllNumbers` checking to support negatives with `/^-?\d+$/`.
+
+## 2024-06-25 - [Fixing Headless CSV Import Detection for Swapped Columns]
+**Mode:** Medic
+**Learning:** For headless (no-header) CSV imports, checking if *all* columns are numbers (`isAllNumbers`) fails to identify 2-column data like `["1200", "Player B"]`. The fallback logic incorrectly defaulted to assuming the first column was the name.
+**Action:** Expanded the fallback condition to `isAllNumbers || (numIndex >= 0 && header.length === 2)` to properly detect and map data regardless of whether the numerical column comes first or second in standard 2-column imports.
