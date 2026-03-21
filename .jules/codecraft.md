@@ -17,3 +17,8 @@
 **Mode:** Medic
 **Learning:** For headless (no-header) CSV imports, checking if *all* columns are numbers (`isAllNumbers`) fails to identify 2-column data like `["1200", "Player B"]`. The fallback logic incorrectly defaulted to assuming the first column was the name.
 **Action:** Expanded the fallback condition to `isAllNumbers || (numIndex >= 0 && header.length === 2)` to properly detect and map data regardless of whether the numerical column comes first or second in standard 2-column imports.
+
+## 2024-07-20 - [Fixing Enter key navigation focus trap]
+**Mode:** Medic
+**Learning:** In applications where elements are hidden via CSS `display: none` depending on state (e.g., hiding Win Rate inputs in Elo mode), relying on DOM sibling traversal (`target.nextElementSibling.focus()`) for keyboard navigation fails because the browser cannot focus hidden elements.
+**Action:** When implementing keyboard navigation through a dynamic form, explicitly query the intended target elements using class names or IDs (e.g., `row.querySelector('.elo-input')`) based on the current application state, rather than assuming DOM adjacency.

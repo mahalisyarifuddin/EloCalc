@@ -615,10 +615,16 @@
 			}
 
 			focusNext(target, row) {
-				if (target.type === 'text') target.nextElementSibling?.focus();
-				else if (target.classList.contains('win-input') && this.allowTies) target.nextElementSibling?.focus();
-				else if (row.nextElementSibling) row.nextElementSibling.querySelector('input')?.focus();
-				else this.add();
+				if (target.classList.contains('name-input')) {
+					if (this.mode === 'elo') row.querySelector('.elo-input')?.focus();
+					else row.querySelector('.win-input')?.focus();
+				} else if (target.classList.contains('win-input') && this.allowTies) {
+					row.querySelector('.tie-input')?.focus();
+				} else if (row.nextElementSibling) {
+					row.nextElementSibling.querySelector('input')?.focus();
+				} else {
+					this.add();
+				}
 			}
 
 			string(key) { return text[this.language]?.[key] ?? key; }
