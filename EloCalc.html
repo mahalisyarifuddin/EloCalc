@@ -1037,9 +1037,8 @@
 				const tsv = this.generateTableText('\t');
 				if (tsv) {
 					navigator.clipboard.writeText(tsv).then(() => {
-						const originalText = elements.copy.textContent;
 						elements.copy.textContent = this.string('copySuccess');
-						setTimeout(() => elements.copy.textContent = originalText, 2000);
+						setTimeout(() => elements.copy.textContent = this.string('copy'), 2000);
 					});
 				}
 			}
