@@ -22,3 +22,8 @@
 **Mode:** Medic
 **Learning:** In applications where elements are hidden via CSS `display: none` depending on state (e.g., hiding Win Rate inputs in Elo mode), relying on DOM sibling traversal (`target.nextElementSibling.focus()`) for keyboard navigation fails because the browser cannot focus hidden elements.
 **Action:** When implementing keyboard navigation through a dynamic form, explicitly query the intended target elements using class names or IDs (e.g., `row.querySelector('.elo-input')`) based on the current application state, rather than assuming DOM adjacency.
+
+## 2025-03-28 - [Fixing Copy Button State Trap]
+**Mode:** Medic
+**Learning:** A state race condition occurs when restoring a temporary UI change (like 'Copied!') if the script reads the original state from the DOM. A rapid double-click causes the script to read the already-modified 'Copied!' state as the "original" text, permanently trapping the button in the success state.
+**Action:** Never read volatile DOM `textContent` to cache an original state. Always restore text using the application's source of truth, such as a localized translation dictionary (`this.string('copy')`).
