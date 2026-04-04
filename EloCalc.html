@@ -556,8 +556,8 @@
 				elements.normalizeElo.onchange = event => { this.normalizeElo = event.target.checked; this.calculate(); };
 				elements.normalizeElo.checked = this.normalizeElo;
 				document.onkeydown = event => this.key(event);
-				elements.resultsTable.addEventListener('click', event => this.handleTableClick(event));
-				elements.resultsTable.addEventListener('keydown', event => this.handleTableKey(event));
+				elements.resultsTable.addEventListener('click', event => this.handleTableAction(event));
+				elements.resultsTable.addEventListener('keydown', event => this.handleTableAction(event));
 				elements.list.onclick = event => {
 					const row = event.target.closest('.competitor-row');
 					if (event.target.matches('.danger') && row) this.remove(+row.dataset.id);
@@ -586,15 +586,8 @@
 				}
 			}
 
-			handleTableClick(event) {
-				const header = event.target.closest('th[data-sort]');
-				if (header) { this.sortResults(header.dataset.sort); return; }
-				const row = event.target.closest('tr[data-id]');
-				if (row) this.setBaseline(row.dataset.id);
-			}
-
-			handleTableKey(event) {
-				if (event.key !== 'Enter' && event.key !== ' ') return;
+			handleTableAction(event) {
+				if (event.type === 'keydown' && event.key !== 'Enter' && event.key !== ' ') return;
 				const header = event.target.closest('th[data-sort]');
 				if (header) { event.preventDefault(); this.sortResults(header.dataset.sort); return; }
 				const row = event.target.closest('tr[data-id]');
@@ -604,14 +597,13 @@
 			updateCompetitor(competitor, target) {
 				const value = target.value;
 				if (target.classList.contains('name-input')) competitor.name = value;
-				else if (target.classList.contains('win-input')) this.updateRate(competitor, 'winRate', value, target);
-				else if (target.classList.contains('tie-input')) this.updateRate(competitor, 'tieRate', value, target);
-				else if (target.classList.contains('elo-input')) this.updateRate(competitor, 'elo', value, target);
+				else if (target.classList.contains('win-input')) this.updateRate(competitor, 'winRate', value);
+				else if (target.classList.contains('tie-input')) this.updateRate(competitor, 'tieRate', value);
+				else if (target.classList.contains('elo-input')) this.updateRate(competitor, 'elo', value);
 			}
 
-			updateRate(competitor, property, value, target) {
-				const number = value === '' ? '' : (parseFloat(value) || 0);
-				competitor[property] = number;
+			updateRate(competitor, property, value) {
+				competitor[property] = value === '' ? '' : (parseFloat(value) || 0);
 			}
 
 			focusNext(target, row) {
@@ -782,18 +774,10 @@
 				this.renderCompetitors();
 
 				let error = !this.competitors.length ? 'alertCompetitors' : null;
-				if (!error && this.mode === 'win' && this.hasInvalidRates()) error = 'alertInvalidRate';
+				if (!error && this.mode === 'win' && this.competitors.some(c => this.isInvalid(c))) error = 'alertInvalidRate';
 
 				if (error) this.error(this.string(error));
 				else this.performCalculation(mainName);
-			}
-
-			hasInvalidRates() {
-				return this.competitors.some(competitor => {
-					const tieRate = this.allowTies ? +competitor.tieRate : 0;
-					const winRate = +competitor.winRate;
-					return winRate < 0 || winRate > 100 || tieRate < 0 || tieRate > 100 || winRate + tieRate > 100;
-				});
 			}
 
 			performCalculation(mainName) {
@@ -894,8 +878,9 @@
 
 			isInvalid(competitor) {
 				if (this.mode === 'elo') return false;
+				const winRate = +competitor.winRate;
 				const tieRate = this.allowTies ? +competitor.tieRate : 0;
-				return (+competitor.winRate + tieRate) > 100;
+				return winRate < 0 || winRate > 100 || tieRate < 0 || tieRate > 100 || winRate + tieRate > 100;
 			}
 
 			validateRow(row) {
