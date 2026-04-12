@@ -140,7 +140,7 @@
 			width: auto; 
 			font-size: .9rem; 
 		}
-		.mode-elo .win-input, .mode-elo .tie-input, .mode-elo #headWin, .mode-elo #headTie, .mode-elo #allowTies, .mode-elo #allowTiesLabel, .mode-elo .group { 
+		.mode-elo .win-input, .mode-elo .tie-input, .mode-elo #headWin, .mode-elo #headTie, .mode-elo #allowTies, .mode-elo #allowTiesLabel {
 			display: none !important; 
 		}
 		.mode-win #normalizeElo, .mode-win #normalizeEloLabel { 
@@ -799,7 +799,11 @@
 					}
 					allResults.forEach(result => result.eloRating = result.rawElo + adjustment);
 				} else {
-					allResults = this.competitors.map(c => ({ name: c.name.trim() || `Competitor ${c.id}`, eloRating: parseFloat(c.elo) || 0, id: c.id }));
+					const mainElo = parseFloat(elements.mainElo.value) || 0;
+					allResults = [
+						{ name: mainName, eloRating: mainElo, id: 'main' },
+						...this.competitors.map(c => ({ name: c.name.trim() || `Competitor ${c.id}`, eloRating: parseFloat(c.elo) || 0, id: c.id }))
+					];
 					if (allResults.length > 0) {
 						averageElo = allResults.reduce((sum, result) => sum + result.eloRating, 0) / allResults.length;
 						if (this.normalizeElo) {
