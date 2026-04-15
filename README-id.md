@@ -9,7 +9,12 @@ EloCalc adalah alat berbasis peramban (browser) satu file untuk mengubah tingkat
 Antarmuka mendukung **Bahasa Inggris** dan **Bahasa Indonesia**.
 
 ## Cara Kerja
-Kalkulator beroperasi dalam dua mode:
+Kalkulator beroperasi dalam tiga mode:
+
+### Mode Item Ganda
+Memungkinkan perbandingan cepat antara tepat dua item (Pesaing Utama dan satu kompetitor).
+1.  **Dua Elo -> Tingkat Menang**: Menghitung probabilitas kemenangan yang diharapkan antara dua peringkat Elo yang diketahui.
+2.  **Elo + Tingkat Menang -> Elo**: Menghitung peringkat Elo yang diperlukan bagi kompetitor untuk mencapai tingkat kemenangan tertentu terhadap Elo dasar Pesaing Utama.
 
 ### Tingkat Menang -> Elo
 Mengambil penantang utama dan daftar lawan dengan tingkat kemenangan masing-masing.
@@ -34,7 +39,7 @@ Dalam kedua mode, Anda dapat **mengklik baris mana pun di hasil** untuk menetapk
 6.  Klik baris dalam tabel hasil untuk membandingkan secara dinamis dengan kompetitor yang berbeda.
 
 ## Fitur Utama
--   **Mode Ganda**: Konversi Tingkat Menang ke Elo, atau Elo ke Tingkat Menang.
+-   **Tiga Mode**: Tingkat Menang -> Elo Massal, Elo -> Tingkat Menang Massal, dan **Mode Item Ganda** yang cepat.
 -   **Perbandingan Acuan**: Klik baris mana pun untuk melihat statistik relatif terhadap kompetitor tersebut.
 -   **Dukungan Multi-bahasa**: Beralih antara Bahasa Inggris dan Bahasa Indonesia.
 -   **Tema Gelap/Terang**: Pilihan tema otomatis atau manual.

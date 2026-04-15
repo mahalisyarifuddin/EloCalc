@@ -9,7 +9,12 @@ EloCalc is a single-file, browser-based tool for converting simple win rates int
 The interface supports both **English** and **Bahasa Indonesia**.
 
 ## How It Works
-The calculator operates in two modes:
+The calculator operates in three modes:
+
+### Dual Item Mode
+Allows for a quick comparison between exactly two items (Main Contender and one competitor).
+1.  **Two Elos -> Win Rate**: Calculates the expected win probability between two known Elo ratings.
+2.  **Elo + Win Rate -> Elo**: Calculates the required Elo rating for a competitor to achieve a specific win rate against the Main Contender's base Elo.
 
 ### Win Rate -> Elo
 Takes a main contender and a list of opponents with their respective win rates against the main contender.
@@ -34,7 +39,7 @@ In both modes, you can **click any row in the results** to set that competitor a
 6.  Click rows in the result table to dynamically compare against different competitors.
 
 ## Key Features
--   **Dual Modes**: Convert Win Rates to Elo, or Elo to Win Rates.
+-   **Three Modes**: Bulk Win Rate -> Elo, Bulk Elo -> Win Rate, and the quick **Dual Item Mode**.
 -   **Baseline Comparison**: Click any row to see relative stats against that competitor.
 -   **Multi-language Support**: Toggle between English and Indonesian.
 -   **Dark/Light Theme**: Automatic or manual theme selection.
