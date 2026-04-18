@@ -533,6 +533,9 @@
 		};
 
 		class EloCalc {
+			get isWinInput() { return this.mode === 'win' || (this.mode === 'dual' && this.dualSource === 'win'); }
+			get isEloInput() { return this.mode === 'elo' || (this.mode === 'dual' && this.dualSource === 'elos'); }
+
 			constructor() {
 				this.competitors = Object.entries({
 					'Player B': [65, 10, 1000],
@@ -689,15 +692,8 @@
 				elements.headWin.textContent = this.string('winRatePlaceholder');
 				elements.headTie.textContent = this.string('tieRatePlaceholder');
 				elements.headElo.textContent = this.string('eloPlaceholder');
-				[...elements.mode.options].forEach(option => {
-					if (option.value === 'win') option.textContent = this.string('modeWin');
-					else if (option.value === 'elo') option.textContent = this.string('modeElo');
-					else if (option.value === 'dual') option.textContent = this.string('modeDual');
-				});
-				[...elements.dualSource.options].forEach(option => {
-					if (option.value === 'elos') option.textContent = this.string('dualSourceElos');
-					else if (option.value === 'win') option.textContent = this.string('dualSourceWin');
-				});
+				[...elements.mode.options].forEach(option => option.textContent = this.string('mode' + option.value.charAt(0).toUpperCase() + option.value.slice(1)));
+				[...elements.dualSource.options].forEach(option => option.textContent = this.string('dualSource' + option.value.charAt(0).toUpperCase() + option.value.slice(1)));
 			}
 
 			display(section) {
@@ -920,7 +916,7 @@
 						rank: currentRank,
 						eloDifference,
 						effectiveScore,
-						displayWinRate: (this.mode === 'win' || (this.mode === 'dual' && this.dualSource === 'win')) ? result.winRate : effectiveScore * 100
+						displayWinRate: this.isWinInput ? result.winRate : effectiveScore * 100
 					};
 				});
 			}
@@ -949,14 +945,14 @@
 			}
 
 			isInvalid(competitor) {
-				if (this.mode === 'elo' || (this.mode === 'dual' && this.dualSource === 'elos')) return false;
+				if (this.isEloInput) return false;
 				const winRate = +competitor.winRate;
 				const tieRate = this.allowTies ? +competitor.tieRate : 0;
 				return winRate < 0 || winRate > 100 || tieRate < 0 || tieRate > 100 || winRate + tieRate > 100;
 			}
 
 			validateRow(row) {
-				if (!row || this.mode === 'elo') {
+				if (!row || this.isEloInput) {
 					if (row) row.querySelectorAll('input').forEach(input => input.classList.remove('invalid'));
 					return;
 				}
@@ -1014,8 +1010,8 @@
 									${header('eloRating', this.string('rank'))}
 									${header('name', this.string('name'))}
 									${header('displayWinRate', this.string('winRate'))}
-									${(this.mode === 'win' || (this.mode === 'dual' && this.dualSource === 'win')) ? header('tieRate', this.string('tieRate')) : ''}
-									${(this.mode === 'win' || (this.mode === 'dual' && this.dualSource === 'win')) ? header('effectiveScore', this.string('effectiveScore')) : ''}
+									${this.isWinInput ? header('tieRate', this.string('tieRate')) : ''}
+									${this.isWinInput ? header('effectiveScore', this.string('effectiveScore')) : ''}
 									${header('eloRating', this.string('eloRating'))}
 									${header('eloRating', this.string('relativeStrength'))}
 									${header('eloDifference', this.string('eloDifference'))}
@@ -1029,8 +1025,8 @@
 										<td>${result.rank}</td>
 										<td><strong>${escape(result.name)}</strong>${isClosest ? ' <span title="Closest to Average">~</span>' : ''}</td>
 										<td>${this.format(result.displayWinRate, { maximumFractionDigits: 1 })}%</td>
-										${(this.mode === 'win' || (this.mode === 'dual' && this.dualSource === 'win')) ? `<td>${this.format(result.tieRate || 0, { maximumFractionDigits: 1 })}%</td>` : ''}
-										${(this.mode === 'win' || (this.mode === 'dual' && this.dualSource === 'win')) ? `<td>${this.format(result.effectiveScore * 100, { maximumFractionDigits: 1 })}%</td>` : ''}
+										${this.isWinInput ? `<td>${this.format(result.tieRate || 0, { maximumFractionDigits: 1 })}%</td>` : ''}
+										${this.isWinInput ? `<td>${this.format(result.effectiveScore * 100, { maximumFractionDigits: 1 })}%</td>` : ''}
 										<td><strong>${Math.round(result.eloRating)}</strong></td>
 										<td><div class="bar-container" title="${Math.round(result.eloRating)}" aria-hidden="true"><div class="bar" style="width:${Math.max(0, result.eloRating / maxElo * 100)}%"></div></div></td>
 										<td>${result.eloDifference > 0 ? '+' : ''}${Math.round(result.eloDifference)}</td>
@@ -1060,8 +1056,8 @@
 					this.string('rank'),
 					this.string('name'),
 					this.string('winRate'),
-					...((this.mode === 'win' || (this.mode === 'dual' && this.dualSource === 'win')) ? [this.string('tieRate')] : []),
-					...((this.mode === 'win' || (this.mode === 'dual' && this.dualSource === 'win')) ? [this.string('effectiveScore')] : []),
+					...(this.isWinInput ? [this.string('tieRate')] : []),
+					...(this.isWinInput ? [this.string('effectiveScore')] : []),
 					this.string('eloRating'),
 					this.string('eloDifference')
 				].join(separator);
@@ -1077,8 +1073,8 @@
 						result.rank,
 						result.name,
 						this.format(result.displayWinRate, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
-						...((this.mode === 'win' || (this.mode === 'dual' && this.dualSource === 'win')) ? [result.tieRate || 0] : []),
-						...((this.mode === 'win' || (this.mode === 'dual' && this.dualSource === 'win')) ? [this.format(result.effectiveScore * 100, { minimumFractionDigits: 1, maximumFractionDigits: 1 })] : []),
+						...(this.isWinInput ? [result.tieRate || 0] : []),
+						...(this.isWinInput ? [this.format(result.effectiveScore * 100, { minimumFractionDigits: 1, maximumFractionDigits: 1 })] : []),
 						Math.round(result.eloRating),
 						Math.round(result.eloDifference)
 					].map(escapeValue).join(separator);
