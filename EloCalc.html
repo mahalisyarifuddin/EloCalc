@@ -615,8 +615,12 @@
 					const competitor = this.competitors.find(c => c.id === +row.dataset.id);
 					if (competitor) this.updateCompetitor(competitor, event.target);
 					this.focusNext(event.target, row);
-				} else if (event.target.matches('#mainName, #allowTies')) {
+				} else if (event.target.matches('#mainName, #mainElo, #allowTies')) {
 					event.preventDefault();
+					if (event.target.id === 'mainName' && this.isEloInput) {
+						elements.mainElo.focus();
+						return;
+					}
 					const firstInput = elements.list.firstElementChild?.querySelector('input');
 					if (firstInput) firstInput.focus();
 					else elements.add.focus();
@@ -645,7 +649,7 @@
 
 			focusNext(target, row) {
 				if (target.classList.contains('name-input')) {
-					if (this.mode === 'elo') row.querySelector('.elo-input')?.focus();
+					if (this.isEloInput) row.querySelector('.elo-input')?.focus();
 					else row.querySelector('.win-input')?.focus();
 				} else if (target.classList.contains('win-input') && this.allowTies) {
 					row.querySelector('.tie-input')?.focus();
