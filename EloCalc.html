@@ -164,6 +164,9 @@
 		.mode-dual[data-source='win'] .elo-input:not(#mainElo) {
 			display: none !important;
 		}
+		.mode-dual .competitor-row:nth-child(n+2) {
+			display: none !important;
+		}
 		#mainElo { 
 			margin-top: 0.5rem; 
 		}
@@ -653,7 +656,7 @@
 					else row.querySelector('.win-input')?.focus();
 				} else if (target.classList.contains('win-input') && this.allowTies) {
 					row.querySelector('.tie-input')?.focus();
-				} else if (row.nextElementSibling) {
+				} else if (row.nextElementSibling && this.mode !== 'dual') {
 					row.nextElementSibling.querySelector('input')?.focus();
 				} else if (this.mode !== 'dual') {
 					this.add();
@@ -684,9 +687,6 @@
 				elements.mode.value = mode;
 				elements.input.dataset.source = this.dualSource;
 				elements.dualOptions.classList.toggle('hidden', mode !== 'dual');
-				if (mode === 'dual' && this.competitors.length > 1) {
-					this.competitors = this.competitors.slice(0, 1);
-				}
 				this.error();
 				this.renderCompetitors();
 			}
