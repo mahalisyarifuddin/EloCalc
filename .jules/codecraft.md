@@ -14,3 +14,7 @@
 **Mode:** Medic
 **Learning:** Destructive operations on underlying application state (like array slicing `this.competitors.slice(0, 1)`) to achieve visual UI constraints causes permanent data loss if the user switches out of that mode. When managing UI visibility based on application modes, CSS should be used to hide elements rather than mutating the core data structure. Also, it is critical to ensure that keyboard navigation logic (`focusNext`) does not attempt to focus elements that have been hidden via CSS (`display: none`), as this will create a focus trap or skip to unintended elements.
 **Action:** When implementing different views or modes that require fewer data points than others, hide the extra elements visually using CSS selectors instead of deleting the data. Always cross-check keyboard event handlers to ensure they respect the visibility state of elements dictated by CSS when iterating or finding the "next" element.
+## 2024-05-18 - Incorrect array filtering discards valid 0 inputs
+**Mode:** Medic
+**Learning:** Empty rate inputs are stored as `''` while explicit zero inputs are stored as `0`. In `EloCalc.html`, array filtering logic using greater-than checks (`> 0`) to discard empty inputs also incorrectly discarded valid `0` inputs.
+**Action:** When filtering potentially falsy numeric data, use strict inequality against the exact representation of empty state (`!== ''`) rather than generic truthy checks or `> 0`.
