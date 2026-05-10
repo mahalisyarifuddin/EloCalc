@@ -816,7 +816,7 @@
 				if (this.mode !== 'dual') {
 					this.competitors = this.competitors.filter(c =>
 						c.name.trim() ||
-						(this.mode === 'win' && (c.winRate > 0 || c.tieRate > 0)) ||
+						(this.mode === 'win' && (c.winRate !== '' || c.tieRate !== '')) ||
 						(this.mode === 'elo' && c.elo !== '')
 					);
 				}
