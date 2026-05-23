@@ -696,6 +696,8 @@
 				elements.headWin.textContent = this.string('winRatePlaceholder');
 				elements.headTie.textContent = this.string('tieRatePlaceholder');
 				elements.headElo.textContent = this.string('eloPlaceholder');
+				elements.mainElo.placeholder = this.string('eloPlaceholder');
+				elements.mainElo.setAttribute('aria-label', this.string('eloPlaceholder'));
 				[...elements.mode.options].forEach(option => option.textContent = this.string('mode' + option.value.charAt(0).toUpperCase() + option.value.slice(1)));
 				[...elements.dualSource.options].forEach(option => option.textContent = this.string('dualSource' + option.value.charAt(0).toUpperCase() + option.value.slice(1)));
 			}
