@@ -611,13 +611,18 @@
 
 			key(event) {
 				if (event.key !== 'Enter') return;
-				if (event.ctrlKey || event.metaKey) { this.calculate(); return; }
+
 				if (event.target.matches('input') && event.target.closest('.competitor-row')) {
-					event.preventDefault();
 					const row = event.target.closest('.competitor-row');
 					const competitor = this.competitors.find(c => c.id === +row.dataset.id);
 					if (competitor) this.updateCompetitor(competitor, event.target);
+
+					if (event.ctrlKey || event.metaKey) { this.calculate(); return; }
+
+					event.preventDefault();
 					this.focusNext(event.target, row);
+				} else if (event.ctrlKey || event.metaKey) {
+					this.calculate();
 				} else if (event.target.matches('#mainName, #mainElo, #allowTies')) {
 					event.preventDefault();
 					if (event.target.id === 'mainName' && this.isEloInput) {
