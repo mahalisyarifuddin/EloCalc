@@ -808,9 +808,10 @@
 						if (tieIndex >= 0) { this.allowTies = true; elements.allowTies.checked = true; }
 						this.error();
 						this.renderCompetitors();
-						elements.file.value = '';
 					} catch {
 						this.error(this.string('alertImport'));
+					} finally {
+						elements.file.value = '';
 					}
 				};
 				if (file) reader.readAsText(file);
