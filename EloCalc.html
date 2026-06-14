@@ -980,8 +980,9 @@
 			}
 
 			sortResults(field) {
-				if (this.sortState.field === field) this.sortState.direction *= -1;
-				else { this.sortState.field = field; this.sortState.direction = field === 'name' ? 1 : -1; }
+				const isSameField = this.sortState.field === field;
+				// Toggle direction if the same field is clicked, otherwise default to ascending for names and descending for numbers
+				this.sortState = { field, direction: isSameField ? this.sortState.direction * -1 : (field === 'name' ? 1 : -1) };
 				this.renderResults();
 			}
 
@@ -991,13 +992,10 @@
 				const maxElo = Math.max(...this.data.results.map(r => r.eloRating), 1);
 
 				const { field, direction } = this.sortState;
-				// Create a shallow copy to sort
-				const sortedResults = [...this.processedResults].sort((a, b) => {
-					const valueA = a[field];
-					const valueB = b[field];
-					if (typeof valueA === 'string') return direction * valueA.localeCompare(valueB);
-					return direction * (valueA - valueB);
-				});
+				// Use numeric sorting for strings to correctly order values like "Player 2" before "Player 10"
+				const sortedResults = [...this.processedResults].sort((a, b) =>
+					typeof a[field] === 'string' ? direction * a[field].localeCompare(b[field], undefined, { numeric: true }) : direction * (a[field] - b[field])
+				);
 
 				this.sortedResults = sortedResults;
 
