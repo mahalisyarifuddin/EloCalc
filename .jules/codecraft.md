@@ -18,3 +18,7 @@
 **Mode:** Medic
 **Learning:** Empty rate inputs are stored as `''` while explicit zero inputs are stored as `0`. In `EloCalc.html`, array filtering logic using greater-than checks (`> 0`) to discard empty inputs also incorrectly discarded valid `0` inputs.
 **Action:** When filtering potentially falsy numeric data, use strict inequality against the exact representation of empty state (`!== ''`) rather than generic truthy checks or `> 0`.
+## 2024-06-27 - Tie Rate Output Dependency on UI State
+**Mode:** Medic
+**Learning:** In the `renderResults` and `generateTableText` methods, the condition for displaying the tie rate column previously only checked if the mode was win input (`this.isWinInput`). It failed to account for whether ties were actually enabled (`allowTies`) during the calculation. Relying solely on `this.isWinInput` caused the tie rate column to appear unconditionally in win mode, even when ties were explicitly disabled.
+**Action:** When conditionally rendering results or generating CSV exports in EloCalc (e.g., for tie rates), use the calculation state snapshot (`this.data.allowTies`) instead of just the mode (`this.isWinInput`) to ensure the display correctly matches the data used during the last calculation.
