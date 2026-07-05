@@ -903,6 +903,7 @@
 				this.data = {
 					results: allResults.sort((a, b) => b.eloRating - a.eloRating),
 					allowTies: this.allowTies,
+					isWinMode: this.isWinInput,
 					baselineId: this.data?.baselineId && allResults.find(r => r.id === this.data.baselineId) ? this.data.baselineId : baselineId,
 					closestId
 				};
@@ -928,7 +929,7 @@
 						rank: currentRank,
 						eloDifference,
 						effectiveScore,
-						displayWinRate: this.isWinInput ? result.winRate : effectiveScore * 100
+						displayWinRate: this.data.isWinMode ? result.winRate : effectiveScore * 100
 					};
 				});
 			}
@@ -1020,8 +1021,8 @@
 									${header('eloRating', this.string('rank'))}
 									${header('name', this.string('name'))}
 									${header('displayWinRate', this.string('winRate'))}
-									${this.isWinInput && this.data.allowTies ? header('tieRate', this.string('tieRate')) : ''}
-									${this.isWinInput ? header('effectiveScore', this.string('effectiveScore')) : ''}
+									${this.data.isWinMode && this.data.allowTies ? header('tieRate', this.string('tieRate')) : ''}
+									${this.data.isWinMode ? header('effectiveScore', this.string('effectiveScore')) : ''}
 									${header('eloRating', this.string('eloRating'))}
 									${header('eloRating', this.string('relativeStrength'))}
 									${header('eloDifference', this.string('eloDifference'))}
@@ -1035,8 +1036,8 @@
 										<td>${result.rank}</td>
 										<td><strong>${escape(result.name)}</strong>${isClosest ? ' <span title="Closest to Average">~</span>' : ''}</td>
 										<td>${this.format(result.displayWinRate, { maximumFractionDigits: 1 })}%</td>
-										${this.isWinInput && this.data.allowTies ? `<td>${this.format(result.tieRate || 0, { maximumFractionDigits: 1 })}%</td>` : ''}
-										${this.isWinInput ? `<td>${this.format(result.effectiveScore * 100, { maximumFractionDigits: 1 })}%</td>` : ''}
+										${this.data.isWinMode && this.data.allowTies ? `<td>${this.format(result.tieRate || 0, { maximumFractionDigits: 1 })}%</td>` : ''}
+										${this.data.isWinMode ? `<td>${this.format(result.effectiveScore * 100, { maximumFractionDigits: 1 })}%</td>` : ''}
 										<td><strong>${Math.round(result.eloRating)}</strong></td>
 										<td><div class="bar-container" title="${Math.round(result.eloRating)}" aria-hidden="true"><div class="bar" style="width:${Math.max(0, result.eloRating / maxElo * 100)}%"></div></div></td>
 										<td>${result.eloDifference > 0 ? '+' : ''}${Math.round(result.eloDifference)}</td>
@@ -1066,8 +1067,8 @@
 					this.string('rank'),
 					this.string('name'),
 					this.string('winRate'),
-					...(this.isWinInput && this.data.allowTies ? [this.string('tieRate')] : []),
-					...(this.isWinInput ? [this.string('effectiveScore')] : []),
+					...(this.data.isWinMode && this.data.allowTies ? [this.string('tieRate')] : []),
+					...(this.data.isWinMode ? [this.string('effectiveScore')] : []),
 					this.string('eloRating'),
 					this.string('eloDifference')
 				].join(separator);
@@ -1083,8 +1084,8 @@
 						result.rank,
 						result.name,
 						this.format(result.displayWinRate, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
-						...(this.isWinInput && this.data.allowTies ? [result.tieRate || 0] : []),
-						...(this.isWinInput ? [this.format(result.effectiveScore * 100, { minimumFractionDigits: 1, maximumFractionDigits: 1 })] : []),
+						...(this.data.isWinMode && this.data.allowTies ? [result.tieRate || 0] : []),
+						...(this.data.isWinMode ? [this.format(result.effectiveScore * 100, { minimumFractionDigits: 1, maximumFractionDigits: 1 })] : []),
 						Math.round(result.eloRating),
 						Math.round(result.eloDifference)
 					].map(escapeValue).join(separator);
