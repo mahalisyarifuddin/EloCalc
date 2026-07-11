@@ -503,8 +503,9 @@
 			const firstLine = text.split('\n')[0];
 			let commas = 0, tabs = 0, inside = false;
 			for (const char of firstLine) {
-				if (char === '"') inside = !inside;
-				else if (!inside) { if (char === ',') commas++; else if (char === '\t') tabs++; }
+				if (char === '"') { inside = !inside; continue; }
+				if (!inside && char === ',') { commas++; continue; }
+				if (!inside && char === '\t') { tabs++; continue; }
 			}
 			const separator = tabs >= commas && tabs > 0 ? '\t' : ',';
 			const rows = [];
@@ -515,18 +516,23 @@
 				const char = text[index];
 				const nextChar = text[index + 1];
 				if (char === '"') insideQuote = !insideQuote;
+
 				if (char === separator && !insideQuote) {
 					currentRow.push(currentCell);
 					currentCell = '';
-				} else if ((char === '\n' || char === '\r') && !insideQuote) {
+					continue;
+				}
+
+				if ((char === '\n' || char === '\r') && !insideQuote) {
 					if (char === '\r' && nextChar === '\n') index++;
 					currentRow.push(currentCell);
 					if (currentRow.length > 1 || currentRow[0].trim()) rows.push(currentRow);
 					currentRow = [];
 					currentCell = '';
-				} else {
-					currentCell += char;
+					continue;
 				}
+
+				currentCell += char;
 			}
 			if (currentCell || currentRow.length) {
 				currentRow.push(currentCell);
@@ -621,17 +627,26 @@
 
 					event.preventDefault();
 					this.focusNext(event.target, row);
-				} else if (event.ctrlKey || event.metaKey) {
+					return;
+				}
+
+				if (event.ctrlKey || event.metaKey) {
 					this.calculate();
-				} else if (event.target.matches('#mainName, #mainElo, #allowTies')) {
+					return;
+				}
+
+				if (event.target.matches('#mainName, #mainElo, #allowTies')) {
 					event.preventDefault();
 					if (event.target.id === 'mainName' && this.isEloInput) {
 						elements.mainElo.focus();
 						return;
 					}
 					const firstInput = elements.list.firstElementChild?.querySelector('input');
-					if (firstInput) firstInput.focus();
-					else elements.add.focus();
+					if (firstInput) {
+						firstInput.focus();
+						return;
+					}
+					elements.add.focus();
 				}
 			}
 
@@ -645,10 +660,10 @@
 
 			updateCompetitor(competitor, target) {
 				const value = target.value;
-				if (target.classList.contains('name-input')) competitor.name = value;
-				else if (target.classList.contains('win-input')) this.updateRate(competitor, 'winRate', value);
-				else if (target.classList.contains('tie-input')) this.updateRate(competitor, 'tieRate', value);
-				else if (target.classList.contains('elo-input')) this.updateRate(competitor, 'elo', value);
+				if (target.classList.contains('name-input')) { competitor.name = value; return; }
+				if (target.classList.contains('win-input')) { this.updateRate(competitor, 'winRate', value); return; }
+				if (target.classList.contains('tie-input')) { this.updateRate(competitor, 'tieRate', value); return; }
+				if (target.classList.contains('elo-input')) { this.updateRate(competitor, 'elo', value); return; }
 			}
 
 			updateRate(competitor, property, value) {
@@ -657,13 +672,19 @@
 
 			focusNext(target, row) {
 				if (target.classList.contains('name-input')) {
-					if (this.isEloInput) row.querySelector('.elo-input')?.focus();
-					else row.querySelector('.win-input')?.focus();
-				} else if (target.classList.contains('win-input') && this.allowTies) {
+					if (this.isEloInput) { row.querySelector('.elo-input')?.focus(); return; }
+					row.querySelector('.win-input')?.focus();
+					return;
+				}
+				if (target.classList.contains('win-input') && this.allowTies) {
 					row.querySelector('.tie-input')?.focus();
-				} else if (row.nextElementSibling && this.mode !== 'dual') {
+					return;
+				}
+				if (row.nextElementSibling && this.mode !== 'dual') {
 					row.nextElementSibling.querySelector('input')?.focus();
-				} else if (this.mode !== 'dual') {
+					return;
+				}
+				if (this.mode !== 'dual') {
 					this.add();
 				}
 			}
@@ -709,8 +730,12 @@
 
 			display(section) {
 				['input', 'results'].forEach(id => elements[id].classList.toggle('hidden', id !== section));
-				if (section === 'results') { elements.results.setAttribute('tabindex', '-1'); elements.results.focus(); }
-				else elements.mainName.focus();
+				if (section === 'results') {
+					elements.results.setAttribute('tabindex', '-1');
+					elements.results.focus();
+					return;
+				}
+				elements.mainName.focus();
 			}
 
 			error(message) {
@@ -740,8 +765,11 @@
 				this.competitors = this.competitors.filter(c => c.id !== id);
 				this.renderCompetitors();
 				const target = Math.min(index, this.competitors.length - 1);
-				if (target >= 0) elements.list.children[target]?.querySelector('.danger')?.focus();
-				else elements.add.focus();
+				if (target >= 0) {
+					elements.list.children[target]?.querySelector('.danger')?.focus();
+					return;
+				}
+				elements.add.focus();
 			}
 
 			renderCompetitors() {
@@ -774,11 +802,15 @@
 
 						if (nameIndex < 0 || (winIndex < 0 && eloIndex < 0)) {
 							nameIndex = 0;
-							if (this.mode === 'elo') eloIndex = 1; else winIndex = 1;
+							if (this.mode === 'elo') eloIndex = 1;
+							if (this.mode !== 'elo') winIndex = 1;
+
 							const isAllNumbers = header.every(cell => /^-?\d+$/.test(cell.replace(/[.,]/g, '').trim()));
 							const numIndex = header.findIndex(cell => /^-?\d+$/.test(cell.replace(/[.,]/g, '').trim()));
+
 							if (isAllNumbers || (numIndex >= 0 && header.length === 2)) {
-								if (this.mode === 'elo') eloIndex = numIndex; else winIndex = numIndex;
+								if (this.mode === 'elo') eloIndex = numIndex;
+								if (this.mode !== 'elo') winIndex = numIndex;
 								nameIndex = 1 - numIndex;
 							}
 						}
@@ -834,69 +866,28 @@
 				if (!error && this.mode === 'win' && this.competitors.some(c => this.isInvalid(c))) error = 'alertInvalidRate';
 				if (!error && this.mode === 'dual' && this.dualSource === 'win' && this.isInvalid(this.competitors[0])) error = 'alertInvalidRate';
 
-				if (error) this.error(this.string(error));
-				else this.performCalculation(mainName);
+				if (error) {
+					this.error(this.string(error));
+					return;
+				}
+				this.performCalculation(mainName);
 			}
 
 			performCalculation(mainName) {
-				let allResults = [];
-				let baselineId = 'main';
-				let averageElo = 0;
+				const mainElo = parseFloat(elements.mainElo.value) || 0;
+				const strategies = {
+					win: () => this.calculateWinMode(mainName),
+					elo: () => this.calculateEloMode(mainName, mainElo),
+					dual: () => this.calculateDualMode(mainName, mainElo)
+				};
 
-				if (this.mode === 'win') {
-					const rawResults = this.competitors.map(competitor => this.calculateRow(competitor));
-					allResults = [{ name: mainName, rawElo: 0, isMain: true, id: 'main', winRate: 50, tieRate: 0 }, ...rawResults];
-					const rawAverage = allResults.reduce((sum, result) => sum + result.rawElo, 0) / allResults.length;
-					let adjustment;
-					if (this.anchorMain) {
-						adjustment = 1000;
-						averageElo = rawAverage + 1000;
-					} else {
-						adjustment = 1000 - rawAverage;
-						averageElo = 1000;
-					}
-					allResults.forEach(result => result.eloRating = result.rawElo + adjustment);
-				} else if (this.mode === 'elo') {
-					const mainElo = parseFloat(elements.mainElo.value) || 0;
-					allResults = [
-						{ name: mainName, eloRating: mainElo, id: 'main' },
-						...this.competitors.map(c => ({ name: c.name.trim() || `Competitor ${c.id}`, eloRating: parseFloat(c.elo) || 0, id: c.id }))
-					];
-					if (allResults.length > 0) {
-						averageElo = allResults.reduce((sum, result) => sum + result.eloRating, 0) / allResults.length;
-						if (this.normalizeElo) {
-							const adjustment = 1000 - averageElo;
-							allResults.forEach(result => result.eloRating += adjustment);
-							averageElo = 1000;
-						}
-						baselineId = allResults[0].id;
-					}
-				} else if (this.mode === 'dual') {
-					const mainElo = parseFloat(elements.mainElo.value) || 0;
-					const competitor = this.competitors[0];
-					const compName = competitor.name.trim() || `Competitor ${competitor.id}`;
-					if (this.dualSource === 'elos') {
-						allResults = [
-							{ name: mainName, eloRating: mainElo, id: 'main', winRate: 50, tieRate: 0 },
-							{ name: compName, eloRating: parseFloat(competitor.elo) || 0, id: competitor.id, winRate: 50, tieRate: 0 }
-						];
-					} else {
-						const rowData = this.calculateRow(competitor);
-						allResults = [
-							{ name: mainName, eloRating: mainElo, id: 'main', winRate: 50, tieRate: 0 },
-							{ name: compName, eloRating: mainElo + rowData.rawElo, id: competitor.id, winRate: rowData.winRate, tieRate: rowData.tieRate }
-						];
-					}
-					averageElo = (allResults[0].eloRating + allResults[1].eloRating) / 2;
-					baselineId = 'main';
-				}
+				const { allResults, baselineId, averageElo } = strategies[this.mode]();
 
-				const targetAverage = averageElo;
 				let closestId = null;
 				let minDifference = Infinity;
 
 				allResults.forEach(result => {
-					const difference = Math.abs(result.eloRating - targetAverage);
+					const difference = Math.abs(result.eloRating - averageElo);
 					if (difference < minDifference) { minDifference = difference; closestId = result.id; }
 				});
 
@@ -911,6 +902,62 @@
 				this.updateRelativeStats();
 				this.renderResults();
 				this.display('results');
+			}
+
+			calculateWinMode(mainName) {
+				const rawResults = this.competitors.map(competitor => this.calculateRow(competitor));
+				const allResults = [{ name: mainName, rawElo: 0, isMain: true, id: 'main', winRate: 50, tieRate: 0 }, ...rawResults];
+				const rawAverage = allResults.reduce((sum, result) => sum + result.rawElo, 0) / allResults.length;
+
+				const adjustment = this.anchorMain ? 1000 : 1000 - rawAverage;
+				const averageElo = this.anchorMain ? rawAverage + 1000 : 1000;
+
+				allResults.forEach(result => result.eloRating = result.rawElo + adjustment);
+
+				return { allResults, baselineId: 'main', averageElo };
+			}
+
+			calculateEloMode(mainName, mainElo) {
+				const allResults = [
+					{ name: mainName, eloRating: mainElo, id: 'main' },
+					...this.competitors.map(c => ({ name: c.name.trim() || `Competitor ${c.id}`, eloRating: parseFloat(c.elo) || 0, id: c.id }))
+				];
+				let averageElo = 0;
+				let baselineId = 'main';
+
+				if (allResults.length > 0) {
+					averageElo = allResults.reduce((sum, result) => sum + result.eloRating, 0) / allResults.length;
+					if (this.normalizeElo) {
+						const adjustment = 1000 - averageElo;
+						allResults.forEach(result => result.eloRating += adjustment);
+						averageElo = 1000;
+					}
+					baselineId = allResults[0].id;
+				}
+				return { allResults, baselineId, averageElo };
+			}
+
+			calculateDualMode(mainName, mainElo) {
+				const competitor = this.competitors[0];
+				const compName = competitor.name.trim() || `Competitor ${competitor.id}`;
+				let allResults = [];
+
+				if (this.dualSource === 'elos') {
+					allResults = [
+						{ name: mainName, eloRating: mainElo, id: 'main', winRate: 50, tieRate: 0 },
+						{ name: compName, eloRating: parseFloat(competitor.elo) || 0, id: competitor.id, winRate: 50, tieRate: 0 }
+					];
+				}
+
+				if (this.dualSource === 'win') {
+					const rowData = this.calculateRow(competitor);
+					allResults = [
+						{ name: mainName, eloRating: mainElo, id: 'main', winRate: 50, tieRate: 0 },
+						{ name: compName, eloRating: mainElo + rowData.rawElo, id: competitor.id, winRate: rowData.winRate, tieRate: rowData.tieRate }
+					];
+				}
+
+				return { allResults, baselineId: 'main', averageElo: (allResults[0].eloRating + allResults[1].eloRating) / 2 };
 			}
 
 			updateRelativeStats() {
@@ -982,7 +1029,6 @@
 
 			sortResults(field) {
 				const isSameField = this.sortState.field === field;
-				// Toggle direction if the same field is clicked, otherwise default to ascending for names and descending for numbers
 				this.sortState = { field, direction: isSameField ? this.sortState.direction * -1 : (field === 'name' ? 1 : -1) };
 				this.renderResults();
 			}
@@ -993,7 +1039,6 @@
 				const maxElo = Math.max(...this.data.results.map(r => r.eloRating), 1);
 
 				const { field, direction } = this.sortState;
-				// Use numeric sorting for strings to correctly order values like "Player 2" before "Player 10"
 				const sortedResults = [...this.processedResults].sort((a, b) =>
 					typeof a[field] === 'string' ? direction * a[field].localeCompare(b[field], undefined, { numeric: true }) : direction * (a[field] - b[field])
 				);
@@ -1047,8 +1092,13 @@
 						</table>
 					</div>`;
 
-				if (savedSort) elements.resultsTable.querySelector(`th[data-sort="${savedSort}"]`)?.focus();
-				else if (savedId) elements.resultsTable.querySelector(`tr[data-id="${savedId}"]`)?.focus();
+				if (savedSort) {
+					elements.resultsTable.querySelector(`th[data-sort="${savedSort}"]`)?.focus();
+					return;
+				}
+				if (savedId) {
+					elements.resultsTable.querySelector(`tr[data-id="${savedId}"]`)?.focus();
+				}
 			}
 
 			setBaseline(id) {
