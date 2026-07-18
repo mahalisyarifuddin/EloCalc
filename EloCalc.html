@@ -905,16 +905,13 @@
 			}
 
 			calculateWinMode(mainName) {
-				const rawResults = this.competitors.map(competitor => this.calculateRow(competitor));
-				const allResults = [{ name: mainName, rawElo: 0, isMain: true, id: 'main', winRate: 50, tieRate: 0 }, ...rawResults];
+				const allResults = [{ name: mainName, rawElo: 0, isMain: true, id: 'main', winRate: 50, tieRate: 0 }, ...this.competitors.map(c => this.calculateRow(c))];
 				const rawAverage = allResults.reduce((sum, result) => sum + result.rawElo, 0) / allResults.length;
-
 				const adjustment = this.anchorMain ? 1000 : 1000 - rawAverage;
-				const averageElo = this.anchorMain ? rawAverage + 1000 : 1000;
 
 				allResults.forEach(result => result.eloRating = result.rawElo + adjustment);
 
-				return { allResults, baselineId: 'main', averageElo };
+				return { allResults, baselineId: 'main', averageElo: this.anchorMain ? rawAverage + 1000 : 1000 };
 			}
 
 			calculateEloMode(mainName, mainElo) {
@@ -922,40 +919,31 @@
 					{ name: mainName, eloRating: mainElo, id: 'main' },
 					...this.competitors.map(c => ({ name: c.name.trim() || `Competitor ${c.id}`, eloRating: parseFloat(c.elo) || 0, id: c.id }))
 				];
-				let averageElo = 0;
-				let baselineId = 'main';
 
-				if (allResults.length > 0) {
-					averageElo = allResults.reduce((sum, result) => sum + result.eloRating, 0) / allResults.length;
-					if (this.normalizeElo) {
-						const adjustment = 1000 - averageElo;
-						allResults.forEach(result => result.eloRating += adjustment);
-						averageElo = 1000;
-					}
-					baselineId = allResults[0].id;
+				let averageElo = allResults.reduce((sum, result) => sum + result.eloRating, 0) / allResults.length;
+				if (this.normalizeElo) {
+					const adjustment = 1000 - averageElo;
+					allResults.forEach(result => result.eloRating += adjustment);
+					averageElo = 1000;
 				}
-				return { allResults, baselineId, averageElo };
+				return { allResults, baselineId: allResults[0].id, averageElo };
 			}
 
 			calculateDualMode(mainName, mainElo) {
 				const competitor = this.competitors[0];
-				const compName = competitor.name.trim() || `Competitor ${competitor.id}`;
-				let allResults = [];
+				const isWin = this.dualSource === 'win';
+				const rowData = isWin ? this.calculateRow(competitor) : null;
 
-				if (this.dualSource === 'elos') {
-					allResults = [
-						{ name: mainName, eloRating: mainElo, id: 'main', winRate: 50, tieRate: 0 },
-						{ name: compName, eloRating: parseFloat(competitor.elo) || 0, id: competitor.id, winRate: 50, tieRate: 0 }
-					];
-				}
-
-				if (this.dualSource === 'win') {
-					const rowData = this.calculateRow(competitor);
-					allResults = [
-						{ name: mainName, eloRating: mainElo, id: 'main', winRate: 50, tieRate: 0 },
-						{ name: compName, eloRating: mainElo + rowData.rawElo, id: competitor.id, winRate: rowData.winRate, tieRate: rowData.tieRate }
-					];
-				}
+				const allResults = [
+					{ name: mainName, eloRating: mainElo, id: 'main', winRate: 50, tieRate: 0 },
+					{
+						name: competitor.name.trim() || `Competitor ${competitor.id}`,
+						eloRating: isWin ? mainElo + rowData.rawElo : (parseFloat(competitor.elo) || 0),
+						id: competitor.id,
+						winRate: isWin ? rowData.winRate : 50,
+						tieRate: isWin ? rowData.tieRate : 0
+					}
+				];
 
 				return { allResults, baselineId: 'main', averageElo: (allResults[0].eloRating + allResults[1].eloRating) / 2 };
 			}
