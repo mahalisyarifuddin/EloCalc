@@ -98,9 +98,11 @@
 			font-size: 1rem;
 			padding: .5rem;
 			width: 100%;
+			transition: border-color 0.15s ease, box-shadow 0.15s ease;
 		}
 		button { 
 			cursor: pointer; 
+			transition: background-color 0.15s ease, filter 0.15s ease;
 		}
 		button:disabled { 
 			opacity: .6; 
@@ -216,6 +218,12 @@
 		}
 		th:hover { 
 			background: var(--hover); 
+		}
+		tbody tr {
+			transition: background-color 0.15s ease;
+		}
+		tbody tr:hover:not(.highlight) {
+			background-color: var(--muted);
 		}
 		th::after { 
 			content: ''; 
@@ -781,7 +789,7 @@
 						<input type="number" class="win-input ${invalid}" value="${competitor.winRate}" placeholder="${this.string('winRatePlaceholder')}" min="0" max="100" step="0.1" aria-label="${this.string('winRatePlaceholder')} ${index + 1}">
 						<input type="number" class="tie-input ${this.allowTies ? '' : 'hidden'} ${invalid}" value="${competitor.tieRate}" placeholder="${this.string('tieRatePlaceholder')}" min="0" max="100" step="0.1" aria-label="${this.string('tieRatePlaceholder')} ${index + 1}">
 						<input type="number" class="elo-input" value="${competitor.elo}" placeholder="${this.string('eloPlaceholder')}" aria-label="${this.string('eloPlaceholder')} ${index + 1}">
-						<button class="danger" aria-label="${this.string('removeCompetitor')} ${index + 1}">×</button>
+						<button class="danger" aria-label="${this.string('removeCompetitor')} ${index + 1}" title="${this.string('removeCompetitor')}">×</button>
 					</div>`;
 				}).join('');
 			}
