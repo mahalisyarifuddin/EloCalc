@@ -1025,7 +1025,7 @@
 
 			sortResults(field) {
 				const isSameField = this.sortState.field === field;
-				this.sortState = { field, direction: isSameField ? this.sortState.direction * -1 : (field === 'name' ? 1 : -1) };
+				this.sortState = { field, direction: isSameField ? this.sortState.direction * -1 : (['name', 'rank'].includes(field) ? 1 : -1) };
 				this.renderResults();
 			}
 
@@ -1059,13 +1059,13 @@
 						<table>
 							<thead>
 								<tr>
-									${header('eloRating', this.string('rank'))}
+									${header('rank', this.string('rank'))}
 									${header('name', this.string('name'))}
 									${header('displayWinRate', this.string('winRate'))}
 									${this.data.isWinMode && this.data.allowTies ? header('tieRate', this.string('tieRate')) : ''}
 									${this.data.isWinMode ? header('effectiveScore', this.string('effectiveScore')) : ''}
 									${header('eloRating', this.string('eloRating'))}
-									${header('eloRating', this.string('relativeStrength'))}
+									<th role="columnheader">${this.string('relativeStrength')}</th>
 									${header('eloDifference', this.string('eloDifference'))}
 								</tr>
 							</thead>
