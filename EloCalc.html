@@ -904,7 +904,8 @@
 					allowTies: this.allowTies,
 					isWinMode: this.isWinInput,
 					baselineId: this.data?.baselineId && allResults.find(r => r.id === this.data.baselineId) ? this.data.baselineId : baselineId,
-					closestId
+					closestId,
+					mode: this.mode
 				};
 				this.sortState = { field: 'eloRating', direction: -1 };
 				this.updateRelativeStats();
@@ -1072,7 +1073,7 @@
 							<tbody>
 								${sortedResults.map((result, index) => {
 									const isBaseline = result.id === baselineId;
-									const isClosest = result.id === this.data.closestId && this.mode === 'elo';
+									const isClosest = result.id === this.data.closestId && this.data.mode === 'elo';
 									return `<tr class="${isBaseline ? 'highlight' : ''} ${isClosest ? 'avg-highlight' : ''}" style="cursor: pointer" data-id="${result.id}" tabindex="0" aria-selected="${isBaseline}">
 										<td>${result.rank}</td>
 										<td><strong>${escape(result.name)}</strong>${isClosest ? ' <span title="Closest to Average">~</span>' : ''}</td>
