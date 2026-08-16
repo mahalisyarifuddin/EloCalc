@@ -508,7 +508,8 @@
 		const escape = string => string.replace(/[&<>"']/g, char => '&#' + char.charCodeAt(0) + ';');
 
 		const parseCSV = text => {
-			const firstLine = text.split('\n')[0];
+			// ⚡ Bolt: Use substring for O(1) memory overhead when extracting first line
+			const firstLine = text.substring(0, text.indexOf('\n') > -1 ? text.indexOf('\n') : text.length);
 			let commas = 0, tabs = 0, inside = false;
 			for (const char of firstLine) {
 				if (char === '"') { inside = !inside; continue; }
