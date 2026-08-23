@@ -1834,14 +1834,21 @@
 				}
 				this.renderCompetitors();
 
-				let error = !this.competitors.length ? 'alertCompetitors' : null;
-				if (!error && this.mode === 'win' && this.competitors.some(c => this.isInvalid(c))) error = 'alertInvalidRate';
-				if (!error && this.mode === 'dual' && this.dualSource === 'win' && this.isInvalid(this.competitors[0])) error = 'alertInvalidRate';
-
-				if (error) {
-					this.error(this.string(error));
+				if (!this.competitors.length) {
+					this.error(this.string('alertCompetitors'));
 					return;
 				}
+
+				if (this.mode === 'win' && this.competitors.some(c => this.isInvalid(c))) {
+					this.error(this.string('alertInvalidRate'));
+					return;
+				}
+
+				if (this.mode === 'dual' && this.dualSource === 'win' && this.isInvalid(this.competitors[0])) {
+					this.error(this.string('alertInvalidRate'));
+					return;
+				}
+
 				this.performCalculation(mainName);
 			}
 
