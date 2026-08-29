@@ -1351,11 +1351,10 @@
 					AppSettings.applyTheme(themeSel.value);
 				}
 				const langSel = $('language');
+				if (!langSel) AppSettings.renderSettings();
 				if (langSel) {
 					langSel.addEventListener('change', e => AppSettings.applyLang(e.target.value));
 					AppSettings.applyLang(langSel.value);
-				} else {
-					AppSettings.renderSettings();
 				}
 
 				/* The conventional pair. Apps using other ids (HijriCalc,
