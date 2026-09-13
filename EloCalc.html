@@ -1486,6 +1486,13 @@
 			let currentRow = [], currentCell = '';
 			let insideQuote = false;
 
+			const pushRow = () => {
+				currentRow.push(currentCell);
+				if (currentRow.length > 1 || currentRow[0].trim()) rows.push(currentRow);
+				currentRow = [];
+				currentCell = '';
+			};
+
 			for (let index = 0; index < text.length; index++) {
 				const char = text[index];
 				const nextChar = text[index + 1];
@@ -1499,19 +1506,13 @@
 
 				if ((char === '\n' || char === '\r') && !insideQuote) {
 					if (char === '\r' && nextChar === '\n') index++;
-					currentRow.push(currentCell);
-					if (currentRow.length > 1 || currentRow[0].trim()) rows.push(currentRow);
-					currentRow = [];
-					currentCell = '';
+					pushRow();
 					continue;
 				}
 
 				currentCell += char;
 			}
-			if (currentCell || currentRow.length) {
-				currentRow.push(currentCell);
-				if (currentRow.length > 1 || currentRow[0].trim()) rows.push(currentRow);
-			}
+			if (currentCell || currentRow.length) pushRow();
 			return rows.map(row => row.map(cell => cell.trim().replace(/^"|"$/g, '').replace(/""/g, '"')));
 		};
 
