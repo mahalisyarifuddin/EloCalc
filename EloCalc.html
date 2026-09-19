@@ -1825,6 +1825,10 @@
 				this.error();
 				const mainName = elements.mainName.value.trim() || 'Main';
 
+				const activeElement = document.activeElement;
+				const savedId = activeElement && activeElement.closest('.competitor-row') ? activeElement.closest('.competitor-row').dataset.id : null;
+				const savedClass = activeElement ? Array.from(activeElement.classList).find(c => c.endsWith('-input')) : null;
+
 				if (this.mode !== 'dual') {
 					this.competitors = this.competitors.filter(c =>
 						c.name.trim() ||
@@ -1833,6 +1837,11 @@
 					);
 				}
 				this.renderCompetitors();
+
+				if (savedId && savedClass) {
+					const row = elements.list.querySelector(`.competitor-row[data-id="${savedId}"]`);
+					if (row) row.querySelector(`.${savedClass}`)?.focus();
+				}
 
 				if (!this.competitors.length) {
 					this.error(this.string('alertCompetitors'));
