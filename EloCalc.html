@@ -1983,9 +1983,16 @@
 
 			isInvalid(competitor) {
 				if (this.isEloInput) return false;
+				if (competitor.winRate === '') return true;
+
 				const winRate = +competitor.winRate;
-				const tieRate = this.allowTies ? +competitor.tieRate : 0;
-				return winRate < 0 || winRate > 100 || tieRate < 0 || tieRate > 100 || winRate + tieRate > 100;
+				const tieRate = this.allowTies && competitor.tieRate !== '' ? +competitor.tieRate : 0;
+
+				if (winRate < 0 || winRate > 100) return true;
+				if (tieRate < 0 || tieRate > 100) return true;
+				if (winRate + tieRate > 100) return true;
+
+				return false;
 			}
 
 			validateRow(row) {
