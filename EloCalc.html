@@ -1617,11 +1617,7 @@
 						return;
 					}
 					const firstInput = elements.list.firstElementChild?.querySelector('input');
-					if (firstInput) {
-						firstInput.focus();
-						return;
-					}
-					elements.add.focus();
+					(firstInput || elements.add).focus();
 				}
 			}
 
@@ -1647,21 +1643,20 @@
 
 			focusNext(target, row) {
 				if (target.classList.contains('name-input')) {
-					if (this.isEloInput) { row.querySelector('.elo-input')?.focus(); return; }
-					row.querySelector('.win-input')?.focus();
+					row.querySelector(this.isEloInput ? '.elo-input' : '.win-input')?.focus();
 					return;
 				}
 				if (target.classList.contains('win-input') && this.allowTies) {
 					row.querySelector('.tie-input')?.focus();
 					return;
 				}
-				if (row.nextElementSibling && this.mode !== 'dual') {
+				if (this.mode === 'dual') return;
+
+				if (row.nextElementSibling) {
 					row.nextElementSibling.querySelector('input')?.focus();
 					return;
 				}
-				if (this.mode !== 'dual') {
-					this.add();
-				}
+				this.add();
 			}
 
 			string(key) { return text[this.language]?.[key] ?? key; }
@@ -1696,8 +1691,9 @@
 				elements.headElo.textContent = this.string('eloPlaceholder');
 				elements.mainElo.placeholder = this.string('eloPlaceholder');
 				elements.mainElo.setAttribute('aria-label', this.string('eloPlaceholder'));
-				[...elements.mode.options].forEach(option => option.textContent = this.string('mode' + option.value.charAt(0).toUpperCase() + option.value.slice(1)));
-				[...elements.dualSource.options].forEach(option => option.textContent = this.string('dualSource' + option.value.charAt(0).toUpperCase() + option.value.slice(1)));
+				const capitalize = str => str.charAt(0).toUpperCase() + str.slice(1);
+				[...elements.mode.options].forEach(option => option.textContent = this.string('mode' + capitalize(option.value)));
+				[...elements.dualSource.options].forEach(option => option.textContent = this.string('dualSource' + capitalize(option.value)));
 			}
 
 			display(section) {
@@ -2113,17 +2109,15 @@
 					return stringValue;
 				};
 
-				return headers + '\n' + results.map(result => {
-					return [
-						result.rank,
-						result.name,
-						this.format(result.displayWinRate, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
-						...(this.data.isWinMode && this.data.allowTies ? [result.tieRate || 0] : []),
-						...(this.data.isWinMode ? [this.format(result.effectiveScore * 100, { minimumFractionDigits: 1, maximumFractionDigits: 1 })] : []),
-						Math.round(result.eloRating),
-						Math.round(result.eloDifference)
-					].map(escapeValue).join(separator);
-				}).join('\n');
+				return headers + '\n' + results.map(result => [
+					result.rank,
+					result.name,
+					this.format(result.displayWinRate, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+					...(this.data.isWinMode && this.data.allowTies ? [result.tieRate || 0] : []),
+					...(this.data.isWinMode ? [this.format(result.effectiveScore * 100, { minimumFractionDigits: 1, maximumFractionDigits: 1 })] : []),
+					Math.round(result.eloRating),
+					Math.round(result.eloDifference)
+				].map(escapeValue).join(separator)).join('\n');
 			}
 
 			export() {
