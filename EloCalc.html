@@ -1642,20 +1642,12 @@
 			}
 
 			focusNext(target, row) {
-				if (target.classList.contains('name-input')) {
-					row.querySelector(this.isEloInput ? '.elo-input' : '.win-input')?.focus();
-					return;
-				}
-				if (target.classList.contains('win-input') && this.allowTies) {
-					row.querySelector('.tie-input')?.focus();
-					return;
-				}
+				if (target.classList.contains('name-input')) return row.querySelector(this.isEloInput ? '.elo-input' : '.win-input')?.focus();
+				if (target.classList.contains('win-input') && this.allowTies) return row.querySelector('.tie-input')?.focus();
 				if (this.mode === 'dual') return;
 
-				if (row.nextElementSibling) {
-					row.nextElementSibling.querySelector('input')?.focus();
-					return;
-				}
+				const nextInput = row.nextElementSibling?.querySelector('input');
+				if (nextInput) return nextInput.focus();
 				this.add();
 			}
 
@@ -1733,25 +1725,20 @@
 				this.competitors = this.competitors.filter(c => c.id !== id);
 				this.renderCompetitors();
 				const target = Math.min(index, this.competitors.length - 1);
-				if (target >= 0) {
-					elements.list.children[target]?.querySelector('.danger')?.focus();
-					return;
-				}
-				elements.add.focus();
+				(elements.list.children[target]?.querySelector('.danger') || elements.add).focus();
 			}
 
 			renderCompetitors() {
 				elements.headTie.classList.toggle('hidden', !this.allowTies);
-				elements.list.innerHTML = this.competitors.map((competitor, index) => {
-					const invalid = this.isInvalid(competitor) ? 'invalid' : '';
-					return `<div class="competitor-row" data-id="${competitor.id}">
+				elements.list.innerHTML = this.competitors.map((competitor, index) =>
+					`<div class="competitor-row" data-id="${competitor.id}">
 						<input type="text" class="name-input" value="${escape(competitor.name)}" placeholder="${this.string('competitorPlaceholder')}" aria-label="${this.string('competitorPlaceholder')} ${index + 1}">
-						<input type="number" class="win-input ${invalid}" value="${competitor.winRate}" placeholder="${this.string('winRatePlaceholder')}" min="0" max="100" step="0.1" aria-label="${this.string('winRatePlaceholder')} ${index + 1}">
-						<input type="number" class="tie-input ${this.allowTies ? '' : 'hidden'} ${invalid}" value="${competitor.tieRate}" placeholder="${this.string('tieRatePlaceholder')}" min="0" max="100" step="0.1" aria-label="${this.string('tieRatePlaceholder')} ${index + 1}">
+						<input type="number" class="win-input ${this.isInvalid(competitor) ? 'invalid' : ''}" value="${competitor.winRate}" placeholder="${this.string('winRatePlaceholder')}" min="0" max="100" step="0.1" aria-label="${this.string('winRatePlaceholder')} ${index + 1}">
+						<input type="number" class="tie-input ${this.allowTies ? '' : 'hidden'} ${this.isInvalid(competitor) ? 'invalid' : ''}" value="${competitor.tieRate}" placeholder="${this.string('tieRatePlaceholder')}" min="0" max="100" step="0.1" aria-label="${this.string('tieRatePlaceholder')} ${index + 1}">
 						<input type="number" class="elo-input" value="${competitor.elo}" placeholder="${this.string('eloPlaceholder')}" aria-label="${this.string('eloPlaceholder')} ${index + 1}">
 						<button class="danger" aria-label="${this.string('removeCompetitor')} ${index + 1}" title="${this.string('removeCompetitor')}">×</button>
-					</div>`;
-				}).join('');
+					</div>`
+				).join('');
 			}
 
 			load(file) {
@@ -2054,20 +2041,18 @@
 								</tr>
 							</thead>
 							<tbody>
-								${sortedResults.map((result, index) => {
-									const isBaseline = result.id === baselineId;
-									const isClosest = result.id === this.data.closestId && this.data.mode === 'elo';
-									return `<tr class="${isBaseline ? 'highlight' : ''} ${isClosest ? 'avg-highlight' : ''}" style="cursor: pointer" data-id="${result.id}" tabindex="0" aria-selected="${isBaseline}">
+								${sortedResults.map((result, index) =>
+									`<tr class="${result.id === baselineId ? 'highlight' : ''} ${result.id === this.data.closestId && this.data.mode === 'elo' ? 'avg-highlight' : ''}" style="cursor: pointer" data-id="${result.id}" tabindex="0" aria-selected="${result.id === baselineId}">
 										<td>${result.rank}</td>
-										<td><strong>${escape(result.name)}</strong>${isClosest ? ' <span title="Closest to Average">~</span>' : ''}</td>
+										<td><strong>${escape(result.name)}</strong>${result.id === this.data.closestId && this.data.mode === 'elo' ? ' <span title="Closest to Average">~</span>' : ''}</td>
 										<td>${this.format(result.displayWinRate, { maximumFractionDigits: 1 })}%</td>
 										${this.data.isWinMode && this.data.allowTies ? `<td>${this.format(result.tieRate || 0, { maximumFractionDigits: 1 })}%</td>` : ''}
 										${this.data.isWinMode ? `<td>${this.format(result.effectiveScore * 100, { maximumFractionDigits: 1 })}%</td>` : ''}
 										<td><strong>${Math.round(result.eloRating)}</strong></td>
 										<td><div class="bar-container" title="${Math.round(result.eloRating)}" aria-hidden="true"><div class="bar" style="width:${Math.max(0, result.eloRating / maxElo * 100)}%"></div></div></td>
 										<td>${result.eloDifference > 0 ? '+' : ''}${Math.round(result.eloDifference)}</td>
-									</tr>`;
-								}).join('')}
+									</tr>`
+								).join('')}
 							</tbody>
 						</table>
 					</div>`;
