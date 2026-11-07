@@ -415,7 +415,8 @@
 
 		/* Form controls. Inputs, selects and textareas are full width by design:
 		   width is controlled by the .field / .row wrapper, not the control. */
-		label {
+		label,
+		.col-header {
 			display: block;
 			font-size: .875rem;
 			font-weight: 500;
@@ -1085,12 +1086,12 @@
 				</label>
 			</div>
 			<h3 id="competitorsHeader"></h3>
-			<div id="listHeaders" class="competitor-row">
-				<label id="headName"></label>
-				<label id="headWin"></label>
-				<label id="headTie"></label>
-				<label id="headElo"></label>
-				<button class="hidden-btn" aria-hidden="true">×</button>
+			<div id="listHeaders" class="competitor-row" aria-hidden="true">
+				<span class="col-header" id="headName"></span>
+				<span class="col-header" id="headWin"></span>
+				<span class="col-header" id="headTie"></span>
+				<span class="col-header" id="headElo"></span>
+				<button class="hidden-btn" aria-hidden="true" tabindex="-1">×</button>
 			</div>
 			<div id="list"></div>
 			<div class="row-flex controls-row">
@@ -1660,7 +1661,10 @@
 				this.language = AppSettings.applyLang(language);
 				Object.keys(text.en).forEach(key => { if (elements[key]) elements[key].textContent = this.string(key); });
 				this.updateLabels();
-				[['language', 'langLabel'], ['theme', 'themeLabel'], ['mode', 'modeLabel'], ['settingsBtn', 'prefBtn']].forEach(([id, key]) => elements[id].setAttribute('aria-label', this.string(key)));
+				[['language', 'langLabel'], ['theme', 'themeLabel'], ['mode', 'modeLabel'], ['settingsBtn', 'prefBtn']].forEach(([id, key]) => {
+					elements[id].setAttribute('aria-label', this.string(key));
+					if (id === 'settingsBtn') elements[id].setAttribute('title', this.string(key));
+				});
 				this.renderCompetitors();
 				if (!elements.results.classList.contains('hidden') && this.data) this.renderResults();
 			}
